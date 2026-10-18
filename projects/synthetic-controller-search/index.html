@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic controller search — Mu Qiao</title>
+<meta name="description" content="Specification complete; implementation planned — a bounded, synthetic test of hypothesis-guided search at matched evaluation budgets."><meta name="theme-color" content="#f7f5ef">
+<meta property="og:title" content="Synthetic controller search — Mu Qiao"><meta property="og:description" content="Specification complete; implementation planned — a bounded, synthetic test of hypothesis-guided search at matched evaluation budgets.">
+<meta property="og:site_name" content="Mu Qiao">
+<meta name="twitter:card" content="summary"><meta name="twitter:title" content="Synthetic controller search — Mu Qiao"><meta name="twitter:description" content="Specification complete; implementation planned — a bounded, synthetic test of hypothesis-guided search at matched evaluation budgets.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://muqiao0626.github.io/projects/synthetic-controller-search/"><meta property="og:url" content="https://muqiao0626.github.io/projects/synthetic-controller-search/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+</head><body id="top"><a class="skip-link" href="#main">Skip to content</a><div class="page">
+<header><a class="wordmark" href="/" aria-label="Mu Qiao, home">mq<span>.</span></a><nav aria-label="Main navigation"><a href="/">Home</a><a href="/research/">Research</a><a href="/writing/">Writing</a><a href="/projects/" aria-current="page">Projects</a><a href="/about/">About</a></nav></header>
+<main id="main" tabindex="-1"><section class="page-intro"><p class="eyebrow">project</p><h1>Synthetic controller search</h1><p class="lead">Specification complete; implementation planned — a bounded, synthetic test of hypothesis-guided search at matched evaluation budgets.</p></section><article class="prose"><p class="byline">2026-10-16 · Updated 2026-10-17</p><h2>Status: specification complete; experiments not run</h2>
+<p>The versioned benchmark specification is frozen locally. It defines the synthetic dynamics, controller bounds, objective, evaluation budget, and disjoint development and holdout seeds. The simulator and search methods remain to be implemented.</p>
+<p>The question is whether a history-aware hypothesis proposer can select bounded controller variants that improve held-out cost more efficiently than non-LLM search given the same candidate-evaluation budget.</p>
+<p>The intended task is finite-horizon setpoint tracking on a synthetic scalar plant. Candidates belong to a bounded PID-like family. The evaluator will own the objective, parameter validation, seeds, and development/holdout split; proposals will not contain executable code.</p>
+<h2>What would count as evidence?</h2>
+<p>A fixed reference, random search, and non-LLM local search will provide comparisons. Selection will use development data only. A frozen winner will be evaluated on untouched holdout data, with objective components, safety violations, paired uncertainty, and evaluation counts reported.</p>
+<p>The first implementation will use a deterministic mock proposer offline. That run can validate the software pipeline; it cannot establish LLM effectiveness. A simpler baseline may perform better.</p>
+<h2>Smallest next step</h2>
+<p>Implement the deterministic simulator, controller, and scoring rules, and check them against hand-calculated examples using reserved test seeds. There are no measurements, code-release links, or performance claims to report yet.</p>
+<aside class="disclosure"><h2>Disclosure</h2><p>Planned independent work. No experiments have been run, and LLM effectiveness has not been tested. No employer code, data, designs, or unpublished research are used.</p></aside></article></main>
+<footer><span>Mu Qiao · PhD</span><span>Research. Build. Reflect.</span><a href="#top">Back to top ↑</a></footer>
+</div></body></html>

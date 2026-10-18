@@ -1,0 +1,57 @@
+[
+  {
+    "title": "Home",
+    "summary": "I explore learning, neuroscience, reinforcement learning, and autonomous AI research—from fundamental principles to real-world intelligent systems.",
+    "url": "https://muqiao0626.github.io/"
+  },
+  {
+    "title": "Research",
+    "summary": "Mu Qiao explores learning and neuroscience, autonomous AI research, and learning and optimization at scale. Selected publications and current questions.",
+    "url": "https://muqiao0626.github.io/research/"
+  },
+  {
+    "title": "Writing",
+    "summary": "Technical essays, research notes, experiments, and reflections by Mu Qiao on intelligence, learning, and how AI can improve itself.",
+    "url": "https://muqiao0626.github.io/writing/"
+  },
+  {
+    "title": "Projects",
+    "summary": "Research code, a planned independent AI research benchmark, and personal projects by Mu Qiao.",
+    "url": "https://muqiao0626.github.io/projects/"
+  },
+  {
+    "title": "About",
+    "summary": "Mu Qiao, AI researcher and engineer: a path from computational neuroscience to machine learning and curiosity about autonomous AI research.",
+    "url": "https://muqiao0626.github.io/about/"
+  },
+  {
+    "title": "The Self-Improving AI Lab",
+    "summary": "Agentic research, autonomous discovery, and iterative optimization—examined through hypotheses, experiments, and evidence.",
+    "url": "https://muqiao0626.github.io/writing/self-improving-ai-lab/"
+  },
+  {
+    "title": "How Machines Learn",
+    "summary": "Foundational ideas in neuroscience, reinforcement learning, attention, and memory, connected to modern machine learning.",
+    "url": "https://muqiao0626.github.io/writing/how-machines-learn/"
+  },
+  {
+    "title": "AI That Actually Works",
+    "summary": "From mathematical ideas to reliable systems: control, optimization, evaluation, and the constraints that shape production ML.",
+    "url": "https://muqiao0626.github.io/writing/ai-that-actually-works/"
+  },
+  {
+    "title": "Can AI Become Its Own Research Scientist?",
+    "summary": "AI can help discover better solutions. Showing that it becomes a better researcher requires a different experiment.",
+    "url": "https://muqiao0626.github.io/writing/can-ai-become-its-own-research-scientist/"
+  },
+  {
+    "title": "Research directions",
+    "summary": "Open questions connecting learning theory, autonomous research, and practical optimization.",
+    "url": "https://muqiao0626.github.io/research/research-directions/"
+  },
+  {
+    "title": "Synthetic controller search",
+    "summary": "Specification complete; implementation planned — a bounded, synthetic test of hypothesis-guided search at matched evaluation budgets.",
+    "url": "https://muqiao0626.github.io/projects/synthetic-controller-search/"
+  }
+]
