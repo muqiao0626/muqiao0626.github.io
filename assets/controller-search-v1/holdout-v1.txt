@@ -1,0 +1,65 @@
+# Final Holdout Evaluation & Phase 4 Analysis Registration (`holdout-comparison-v1`)
+
+Frozen 2026-10-22, after completing Phases 3.1–3.5 and before generating or inspecting any holdout noise draw or rollout (`seeds 1000..1029`). This registration freezes every selected development winner, the holdout access guard and audit log, the exact bootstrap PRNG (`seed 4000`) required by `SPEC_v1.md` §7, and the saved trajectory bundle for Phase 4.2.
+
+## 1. Scope, Frozen Development Winners, and Provenance
+
+No further development search or hyperparameter tuning is permitted under `synthetic-pid-v1`. Every candidate evaluated on the 30 holdout rollout seeds (`1000..1029` across `nominal`, `disturbance-shift`, and `saturation-limited`, `90` holdout rollouts per distinct candidate) is fixed by its checksummed development checkpoint:
+
+- **`B0-fixed` (untuned reference, 1 evaluation):** `{"anti_windup": true, "k_d": 0.0, "k_i": 0.05, "k_p": 0.5}` (development mean cost `0.172739954182`, source `reports/development-comparison-v1/study.json` SHA-256 `0b156b9b2b4c79db08089980bfa7e6e3f799d8b10acbd54c076adc2e896e2bea`).
+- **`B1-uniform-random` (10 repetitions `2000..2009`, 10 distinct winners, `900` holdout rollouts):**
+  - `2000` (slot 2): `{"anti_windup": true, "k_d": 0.125107, "k_i": 0.486781, "k_p": 1.680415}` (`0.093394058611`)
+  - `2001` (slot 5): `{"anti_windup": false, "k_d": 0.288923, "k_i": 0.208138, "k_p": 1.490995}` (`0.102105618111`)
+  - `2002` (slot 19): `{"anti_windup": true, "k_d": 0.087975, "k_i": 0.243283, "k_p": 1.550575}` (`0.095925164945`)
+  - `2003` (slot 10): `{"anti_windup": true, "k_d": 0.089842, "k_i": 0.294622, "k_p": 1.835252}` (`0.094331266826`)
+  - `2004` (slot 3): `{"anti_windup": true, "k_d": 0.25627, "k_i": 0.377923, "k_p": 1.756486}` (`0.093910520340`)
+  - `2005` (slot 19): `{"anti_windup": true, "k_d": 0.429762, "k_i": 0.378229, "k_p": 1.748524}` (`0.094298682075`)
+  - `2006` (slot 7): `{"anti_windup": true, "k_d": 0.004142, "k_i": 0.401648, "k_p": 1.239995}` (`0.095473029643`)
+  - `2007` (slot 18): `{"anti_windup": true, "k_d": 0.053321, "k_i": 0.222061, "k_p": 1.957916}` (`0.095621267641`)
+  - `2008` (slot 10): `{"anti_windup": true, "k_d": 0.38356, "k_i": 0.365068, "k_p": 1.852231}` (`0.094052911602`)
+  - `2009` (slot 17): `{"anti_windup": true, "k_d": 0.170298, "k_i": 0.46099, "k_p": 1.224018}` (`0.096076397100`)
+- **`B2-coordinate-search` (10 repetitions `2000..2009`, 1 deterministic winner path, `90` unique holdout rollouts mapped across `2000..2009`):** slot 19, `{"anti_windup": true, "k_d": 0.0, "k_i": 0.3, "k_p": 1.5}` (`0.094933708716`).
+- **`A-mock` (10 repetitions `2000..2009`, 1 deterministic fixture path, `90` unique holdout rollouts mapped across `2000..2009`, `llm_efficacy: "not-tested"`):** slot 15, `{"anti_windup": true, "k_d": 0.1, "k_i": 0.2, "k_p": 1.4}` (`0.098298752813`).
+- **`A-live-proposer` (Phase 3.4 single authorized live repetition `seed 2000`, `90` holdout rollouts):** slot 19, `{"anti_windup": true, "k_d": 0.0, "k_i": 0.5, "k_p": 1.978644}` (`0.092429429500`, checkpoint SHA-256 `e187a4be0355462db89a7fd13c5502f62073a2bfe9d7f83624b1cffa7fff4681`). Repetitions `2001..2009` remain explicitly `not_run`.
+- **Phase 3.5 Ablation Winners (`seed 2000`, `90` holdout rollouts each):**
+  - `A-live-no-history` (slot 15): `{"anti_windup": true, "k_d": 0.015, "k_i": 0.21, "k_p": 1.32}` (`0.097565345058`, checkpoint SHA-256 `12b44edbe766c35cdd95134097c3000d0b3174ccec372b0a0eb8468a724beb3b`).
+  - `B0-no-anti-windup` (slot 1): `{"anti_windup": false, "k_d": 0.0, "k_i": 0.05, "k_p": 0.5}` (`0.175564284109`).
+  - `B1-no-anti-windup` (slot 9): `{"anti_windup": false, "k_d": 0.313827, "k_i": 0.141536, "k_p": 1.587288}` (`0.102579412344`).
+  - `B2-no-anti-windup` (slot 15): `{"anti_windup": false, "k_d": 0.0, "k_i": 0.175, "k_p": 2.0}` (`0.098564684350`).
+  - `A-live-counterfactual-no-anti-windup` (slot 4): `{"anti_windup": false, "k_d": 0.0, "k_i": 0.23, "k_p": 1.9}` (`0.098758607986`).
+  - `A-live-slot19-exact-gains-no-anti-windup` (slot 19): `{"anti_windup": false, "k_d": 0.0, "k_i": 0.5, "k_p": 1.978644}` (`0.114022714137`).
+
+## 2. Holdout Bootstrap PRNG and Predeclared Comparisons (`SPEC_v1.md` §7)
+
+Before running holdout rollouts, the bootstrap resampler is frozen as follows:
+
+- **Algorithm:** `sha256-rejection-u64-v1` (`ip_research.uniform.uniform_integer`) with `bootstrap_seed = 4000`, `replicates = 10000`, and `max_words_per_draw = 64`.
+- **Index generation (`b = 0, ..., 9999`):**
+  - Repetition indices (`10` draws with replacement from `0..9`): key prefix `synthetic-pid-v1|bootstrap|4000|{b}|repetition|{i}` for `i = 0, ..., 9`.
+  - Holdout rollout-seed indices (`30` draws with replacement from `0..29` corresponding to seeds `1000..1029`): key prefix `synthetic-pid-v1|bootstrap|4000|{b}|rollout_seed|{j}` for `j = 0, ..., 29`.
+  - Identical resampled index tuples `(rep_indices[b], seed_indices[b])` are shared across all comparisons.
+- **Seed-block aggregation:** For each method/repetition $q$ and holdout seed $s \in \{1000, \dots, 1029\}$, $J[q, s]$ is the equal-weight mean of total rollout cost across the three scenarios (`nominal`, `disturbance-shift`, `saturation-limited`). The three scenarios are never split across bootstrap draws.
+- **Crossed paired bootstrap estimator:** For comparator pair $(A, B)$ with $D[q, s] = J_A[q, s] - J_B[q, s]$, replicate $b$ computes:
+  $$\bar{D}^{*(b)} = \frac{1}{10 \times 30} \sum_{i=0}^{9} \sum_{j=0}^{29} D\big[\text{rep\_indices}[b][i],\, \text{seed\_indices}[b][j]\big]$$
+  For single-repetition (`seed 2000`) paired comparisons across the 30 holdout seed blocks (`D[s] = J_A[2000, s] - J_B[2000, s]`), replicate $b$ uses the exact same `seed_indices[b]` vector:
+  $$\bar{D}_{2000}^{*(b)} = \frac{1}{30} \sum_{j=0}^{29} D\big[\text{seed\_indices}[b][j]\big]$$
+- **Quantile endpoints:** Sort the `10,000` bootstrap estimates in ascending order and interpolate linearly at $(n - 1) p$ (`n = 10000`) for $p \in \{0.0125, 0.9875\}$ (`97.5%` two-sided interval per comparator, Bonferroni familywise $\alpha = 0.05$ across the two primary comparators `B1` and `B2`), plus secondary descriptive `95%` endpoints $p \in \{0.025, 0.975\}$.
+- **Decision rule and single-repetition live scope:**
+  - Under `SPEC_v1.md` §6–§7, the 10-repetition confirmatory claim for `A-live-proposer` requires all 10 search repetitions (`2000..2009`). Because repetitions `2001..2009` were preregistered as `not_run` in `LIVE_v1.md`, the 10-repetition confirmatory gate is strictly recorded as **`inconclusive-incomplete-search-repetitions`** (`1/10` live repetitions executed).
+  - For `A-mock` (`10/10` repetitions executed), the 10-repetition crossed bootstrap against `B1` and `B2` is evaluated under the §7 decision rule and tagged `llm_efficacy: "not-tested"`.
+  - **Seed-2000 live holdout gate (exploratory, single repetition).** Two primary comparisons, mirroring the two SPEC comparators:
+    - **P1:** `A-live-proposer (2000)` vs. `B1-uniform-random` over all 10 repetitions, `crossed` design (the single live row is repeated across the 10 repetition slots; only `B1` repetitions vary under resampling).
+    - **P2:** `A-live-proposer (2000)` vs. `B2-coordinate-search`, `seed-block` design (B2 is one deterministic path).
+    - `supports-seed2000-holdout-direction` iff both 97.5% upper bounds are `< 0`, `A-live` has zero holdout numerical failures, and its mean unsafe rate is no greater than each comparator's.
+    - `contradicts-seed2000-holdout-direction` iff either 97.5% lower bound is `>= 0` or `A-live`'s mean unsafe rate exceeds either comparator's.
+    - `inconclusive-numerical-failure` if any `A-live` holdout rollout fails numerically; otherwise `inconclusive`.
+  - **Secondary, descriptive seed-2000 comparisons (`seed-block`):** `A-live` vs. `B1 (2000)`, `A-live-no-history`, `A-mock`, `B0-fixed`; `A-live-no-history` vs. `B2` and vs. `B1` (10 reps, crossed). Plus the five anti-windup holdout pairs (`no_aw − aw`). These do not change the gate.
+  - **Full 10-repetition comparisons (`crossed`):** `B2` vs. `B1`, `A-mock` vs. `B1`, `A-mock` vs. `B2` (`A-mock` tagged `llm_efficacy: "not-tested"`).
+  - **Known limitation, stated in advance:** the crossed P1 interval omits the live proposer's own search-to-search variance (only one live repetition exists), so it understates uncertainty for `A-live`. A favorable gate is therefore exploratory evidence about one frozen controller, not evidence about the proposer method in general.
+  - **Holdout-access consequence:** after this run, seeds `1000..1029` count as inspected. Any later tuning must be labeled exploratory, and confirmation would need a new untouched split under a new benchmark version.
+
+## 3. Holdout Access Log & Saved Example Trajectories (`Phase 4.2`)
+
+- **Explicit opt-in & access log:** Holdout execution requires `--enable-holdout` on `experiments/run_holdout.py`. A `holdout-access-started` entry is appended to `reports/holdout-comparison-v1/holdout_access_log.jsonl` *before* the first holdout draw, and a `holdout-access-completed` entry (holdout noise draws, rollouts, network attempts) after. The runner refuses to overwrite an existing holdout `summary.json`; the evaluation is one-shot. Network calls are denied during the run. Standard unit and smoke tests use fixtures only (`0` holdout draws).
+- **Aggregation:** holdout means use the same arithmetic as the pinned development aggregator (equal mean over seeds within a scenario, then equal mean across scenarios), applied to the ordered holdout grid. Identical candidates (deterministic B2/A-mock repeats) are simulated once and reused; they are not counted as independent samples.
+- **Saved example trajectories (`trajectories.json` / `trajectories.csv`):** for `PLAN.md` task 4.2, without post hoc reconstruction, the runner saves complete per-step trajectories (`t = 0..199`: state, next state, reference, error, action, raw action, integral, integration-blocked flag, disturbance, noise, saturation flag) on `development seed 0` and `holdout seed 1000` across all three scenarios for `B0-fixed`, `B1-uniform-random (seed 2000)`, `B2-coordinate-search`, `A-mock`, `A-live-no-history (seed 2000)`, and `A-live-proposer (seed 2000)`.

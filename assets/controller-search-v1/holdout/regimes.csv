@@ -1,0 +1,19 @@
+method,display_name,scenario,cost
+B0-fixed,B0 reference,nominal,0.107394440
+B0-fixed,B0 reference,disturbance-shift,0.218205826
+B0-fixed,B0 reference,saturation-limited,0.192087355
+B1-uniform-random,B1 uniform (mean),nominal,0.043249407
+B1-uniform-random,B1 uniform (mean),disturbance-shift,0.054285027
+B1-uniform-random,B1 uniform (mean),saturation-limited,0.187413401
+B2-coordinate-search,B2 coordinate,nominal,0.043388731
+B2-coordinate-search,B2 coordinate,disturbance-shift,0.053860543
+B2-coordinate-search,B2 coordinate,saturation-limited,0.185831377
+A-mock,Scripted mock,nominal,0.045922661
+A-mock,Scripted mock,disturbance-shift,0.062193280
+A-mock,Scripted mock,saturation-limited,0.185512639
+A-live-no-history,A-live (no history),nominal,0.044771059
+A-live-no-history,A-live (no history),disturbance-shift,0.061409419
+A-live-no-history,A-live (no history),saturation-limited,0.185752334
+A-live-proposer,A-live (Argon High),nominal,0.040746650
+A-live-proposer,A-live (Argon High),disturbance-shift,0.049672866
+A-live-proposer,A-live (Argon High),saturation-limited,0.185768215

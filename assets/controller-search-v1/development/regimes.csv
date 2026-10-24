@@ -1,0 +1,16 @@
+method,scenario,cost
+B0-fixed,nominal,0.10587339115957632
+B0-fixed,disturbance-shift,0.21836353663199554
+B0-fixed,saturation-limited,0.19398293475341394
+B1-uniform-random,nominal,0.042504189105470915
+B1-uniform-random,disturbance-shift,0.05442564361272546
+B1-uniform-random,saturation-limited,0.18962684234984303
+B2-coordinate-search,nominal,0.042638440574846836
+B2-coordinate-search,disturbance-shift,0.05418326607855804
+B2-coordinate-search,saturation-limited,0.18797941949545666
+A-mock,nominal,0.045087379328941676
+A-mock,disturbance-shift,0.06184332953242111
+A-mock,saturation-limited,0.1879655495776177
+A-live-proposer,nominal,0.0399311399668777
+A-live-proposer,disturbance-shift,0.0498753862523585
+A-live-proposer,saturation-limited,0.1874817622806855

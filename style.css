@@ -44,3 +44,8 @@ nav a{padding:8px 0;min-height:44px;display:inline-flex;align-items:center}nav a
 @media(max-width:850px){.theme-grid{grid-template-columns:1fr;gap:20px}.theme{padding-top:18px}.theme h3{font-size:25px}.theme .theme-status{margin-top:14px}}
 
 .prose pre{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Research-note figures and wide result tables remain usable on narrow screens. */
+.prose table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;font-size:14px;line-height:1.5;margin:24px 0}.prose th,.prose td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);min-width:100px}.prose th{font-weight:600}.prose img{display:block;margin:28px auto}
+
+.prose .align-right{text-align:right}.prose .align-center{text-align:center}

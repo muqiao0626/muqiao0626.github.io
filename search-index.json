@@ -16,7 +16,7 @@
   },
   {
     "title": "Projects",
-    "summary": "Research code, a planned independent AI research benchmark, and personal projects by Mu Qiao.",
+    "summary": "Research code, an independent synthetic controller-search study, and personal projects by Mu Qiao.",
     "url": "https://muqiao0626.github.io/projects/"
   },
   {
@@ -40,6 +40,11 @@
     "url": "https://muqiao0626.github.io/writing/ai-that-actually-works/"
   },
   {
+    "title": "Random, coordinate, and live LLM search at a fixed budget",
+    "summary": "A bounded synthetic controller-search study, a promising frozen candidate, and the limits of one live search at a 20-evaluation budget.",
+    "url": "https://muqiao0626.github.io/writing/random-and-coordinate-search-development-note/"
+  },
+  {
     "title": "Can AI Become Its Own Research Scientist?",
     "summary": "AI can help discover better solutions. Showing that it becomes a better researcher requires a different experiment.",
     "url": "https://muqiao0626.github.io/writing/can-ai-become-its-own-research-scientist/"
@@ -51,7 +56,7 @@
   },
   {
     "title": "Synthetic controller search",
-    "summary": "Specification complete; implementation planned — a bounded, synthetic test of hypothesis-guided search at matched evaluation budgets.",
+    "summary": "A completed exploratory comparison of bounded controller searches at 20 evaluations, with frozen-candidate results and explicit limits from one live search.",
     "url": "https://muqiao0626.github.io/projects/synthetic-controller-search/"
   }
 ]

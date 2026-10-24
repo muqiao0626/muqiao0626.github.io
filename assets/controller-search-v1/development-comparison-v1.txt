@@ -1,0 +1,32 @@
+# Development comparison v1 — registered 2026-10-18
+
+This is an exploratory, offline comparison on the **already used development set**, not the frozen protocol's future confirmatory holdout study. B0 and repetition 2000 of B1/B2/A-mock have already been inspected. No method, bound, objective, budget, regime or noise stream is changed. No new algorithm variants will be selected from these results.
+
+Question: at 20 charged candidate evaluations, how does registered local search compare with the distribution of registered uniform search on these fixed development cases?
+
+Directional hypothesis: B2's selected development cost minus the arithmetic mean of B1's ten selected development costs is strictly negative. The descriptive direction is supported only if that difference is negative; otherwise it is contradicted (zero is no improvement). Missing/incomplete runs or any failed candidate make this decision inconclusive; retain and report them, do not silently replace seeds or discard failures. This is not a significance test or a claim of generalization. The known repetition-2000 comparison favored B1; disclosure of that prior observation is part of this registration.
+
+## Execution and accounting
+
+- Frozen `synthetic-pid-v1`; config SHA-256 `226a672ba1f5ec929128d4e0abdff7c9c88703607554b4157f42a271613c6dfd`.
+- B0 once, with no search seed: one candidate, 30 development rollouts, zero proposals. It is an untuned reference, not a budget-matched search.
+- B1, B2 and A-mock each physically execute all repetition IDs 2000–2009. Each run uses 20 unique candidates including the reference, at most 60 attempts, 600 rollouts. Total: 31 runs, 601 candidate evaluations, 18,030 rollouts, 3,606,000 scheduled simulator steps. No cache or inferred executions. Prior verification runs and subsequent software regression/replay compute are excluded from these totals and reported separately.
+- All runs use development seeds 0–9 and all three regimes with existing common noise. The holdout remains disabled and must never generate noise. Socket/DNS calls and non-development noise are blocked during study execution.
+- B2 and A-mock ignore the repetition ID. Their ten physical executions must have identical ordered candidates and numerical rollout records/trajectory hashes, excluding runtime. Each represents **one deterministic search path**, not ten independent samples. B1's ten registered streams are the only search-randomness replicates. Task cases are shared across every run.
+- Keep every atomic checkpoint and raw export. Resume validates frozen registration, source hashes and checkpoint identities. Completed resume performs no simulation. In-flight interrupted work follows the runner's existing charged/unknown policy; no retry to rescue a result.
+
+## Analysis fixed before new scoring
+
+Read authoritative checksummed checkpoints; check source/config identities, complete grid, proposal validation, raw/weighted arithmetic (1e-12 relative/absolute tolerance), aggregates, earliest-tie selection, exports, bounds and budget counts. Verify every reference trajectory/metric equals B0. Reconstruct B1/B2 proposals through the existing validator; verify mock responses against its registered script. No new simulation is required by analysis.
+
+Report per run: ID, method/repetition, winner and parameters, mean cost, raw and weighted components, per-regime means, winner/all-candidate safety and saturation diagnostics, attempts/rejections/failures, actual rollout runtime and run wall time. Compare methods at each charged candidate slot (1–20) using best successful cost so far. Failed candidates retain their charge and cannot improve the curve.
+
+Across B1 repetitions report arithmetic mean, median, sample SD (n−1), minimum and maximum. SD/range describe search variability **conditional on these fixed development tasks**; do not divide uncertainty by the number of B2/mock repeats. Do not calculate a confidence interval, p-value or bootstrap here. For deterministic methods report the common value and one effective path, with repeat equality as a software check, not evidence of zero uncertainty about new tasks.
+
+Report B2-minus-B1 and mock-minus-B1 differences paired by repetition label, and B2-minus-mock once. Count strictly lower/equal/higher B1 outcomes. Pair winner costs by development seed after averaging the three regimes; report those ten blocks and their ranges descriptively. Neither the 30 cases nor 600 rollout rows are independent search repetitions. Do not select the best B1 repetition as the method estimate. Relative improvement against B0 uses the frozen 1e-12 denominator floor.
+
+Produce machine-readable summaries, per-run/per-seed/curve CSVs and a generated Markdown report/table. Safety includes objective unsafe counts, maximum absolute state (including terminal), unsafe/unknown terminals and saturation; saturation alone is not a safety failure. Describe observed failures honestly, including none. Retain failed/incomplete records and label any available-case summaries as incomplete; no directional conclusion in that case.
+
+## Conservative assumptions and boundaries
+
+A-mock is included because it is the third offline search declared in the frozen config. It is a scripted plumbing comparator, not a history-aware LLM. Physical deterministic repetitions are retained for auditability despite redundant compute. Known development reuse and outcome-dependent winner selection bias all reported costs; SD/range do not estimate generalization uncertainty. The untouched holdout protocol and bootstrap registration remain future work. No API, network, employer material, publishing or site-content changes are authorized by this study.

@@ -1,0 +1,6 @@
+method,physical_runs,effective_paths,candidate_evaluations,rejections,failed_candidates,unsafe_count,unsafe_terminals,unknown_safety_rollouts
+B0-fixed,1,1,1,0,0,0,0,0
+B1-uniform-random,10,10,200,0,0,0,0,0
+B2-coordinate-search,10,1,200,80,0,0,0,0
+A-mock,10,1,200,0,0,0,0,0
+A-live-proposer,1,1,20,0,0,0,0,0

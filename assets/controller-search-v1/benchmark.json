@@ -1,0 +1,85 @@
+{
+  "benchmark_id": "synthetic-pid-v1",
+  "version": 1,
+  "status": "frozen-not-run",
+  "frozen_date": "2026-10-17",
+  "execution": {
+    "provider": "mock",
+    "network_enabled": false,
+    "live_api_enabled": false,
+    "max_api_calls": 0,
+    "max_api_tokens": 0,
+    "max_api_cost_usd": 0,
+    "holdout_enabled": false
+  },
+  "simulation": {
+    "horizon": 200,
+    "dt": 1,
+    "x_initial": 0,
+    "u_previous": 0,
+    "integral_previous": 0,
+    "previous_error": "initial-reference-minus-initial-state",
+    "reference_schedule": [
+      { "start": 0, "value": 0 },
+      { "start": 40, "value": 1 },
+      { "start": 100, "value": -0.5 },
+      { "start": 160, "value": 0.5 }
+    ],
+    "noise_generator": "sha256-box-muller-v1",
+    "arithmetic": "float64",
+    "scenarios": [
+      { "id": "nominal", "a": 0.9, "b": 0.2, "u_max": 2, "sigma": 0.02, "x_limit": 2.5, "disturbances": [] },
+      { "id": "disturbance-shift", "a": 0.9, "b": 0.2, "u_max": 2, "sigma": 0.02, "x_limit": 2.5, "disturbances": [{ "start": 80, "end": 140, "value": 0.15 }] },
+      { "id": "saturation-limited", "a": 0.95, "b": 0.1, "u_max": 0.35, "sigma": 0.02, "x_limit": 2.5, "disturbances": [] }
+    ]
+  },
+  "controller": {
+    "family": "bounded-pid-conditional-integration-v1",
+    "bounds": { "k_p": [0, 2], "k_i": [0, 0.5], "k_d": [0, 0.5] },
+    "gain_decimal_places": 6,
+    "anti_windup_values": [false, true],
+    "integral_max": 10,
+    "reference": { "k_p": 0.5, "k_i": 0.05, "k_d": 0, "anti_windup": true },
+    "invalid_candidate_policy": "reject-no-clamp",
+    "duplicate_policy": "reject-within-method-repeat"
+  },
+  "objective": {
+    "direction": "minimize",
+    "state_timing": "pre-update-t0-through-T-minus-1",
+    "weights": { "tracking": 1, "effort": 0.01, "slew": 0.05, "unsafe": 10 },
+    "aggregation": "equal-scenario-then-equal-rollout-seed",
+    "terminal_state_cost": 0,
+    "nonfinite_policy": "failed-candidate-infinite-ranking-cost-null-json-metrics"
+  },
+  "seeds": {
+    "development": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    "holdout": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025, 1026, 1027, 1028, 1029],
+    "search_repetitions": [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009],
+    "unit_tests_reserved": [3000, 3001, 3002, 3003, 3004, 3005, 3006, 3007, 3008, 3009],
+    "bootstrap": [4000]
+  },
+  "evaluation": {
+    "search_methods": ["B1-uniform-random", "B2-coordinate-search", "A-mock"],
+    "candidate_evaluations_per_method_repeat": 20,
+    "initial_reference_included": true,
+    "max_proposal_attempts_per_method_repeat": 60,
+    "fixed_reference_evaluations": 1,
+    "development_rollouts_per_candidate": 30,
+    "development_rollouts_per_method_repeat": 600,
+    "holdout_rollouts_per_frozen_winner": 90,
+    "holdout_selection": "one-development-winner-per-method-repeat",
+    "tie_break": "earliest-evaluated-candidate",
+    "partial_budget_policy": "report-incomplete-exclude-confirmatory-comparison"
+  },
+  "analysis": {
+    "primary_comparators": ["B1-uniform-random", "B2-coordinate-search"],
+    "primary_effect": "mean-holdout-cost-A-minus-baseline",
+    "bootstrap_replicates": 10000,
+    "bootstrap_axes": "crossed-search-repeat-and-rollout-seed",
+    "interval_quantiles": [0.0125, 0.9875],
+    "quantile_interpolation": "linear-n-minus-one",
+    "support_rule": "both-cost-upper-bounds-below-zero-and-no-increased-mean-unsafe-rate",
+    "relative_improvement_denominator_floor": 1e-12,
+    "llm_efficacy": "not-tested"
+  }
+}

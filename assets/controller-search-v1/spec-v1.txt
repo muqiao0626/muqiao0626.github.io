@@ -1,0 +1,140 @@
+# Synthetic controller benchmark v1
+
+Frozen 2026-10-17, before simulation, tuning or holdout observation. Status: **not run**. This specification and `configs/synthetic_pid_v1.json` define an independent synthetic task; neither uses employer code/data/designs nor claims novelty, autonomous science or recursive self-improvement. A freeze is a local versioned protocol, not publication clearance or an executed study.
+
+## 1. Question, hypothesis and baseline
+
+Question: at a matched candidate-evaluation budget, can a history-aware proposer select a bounded PID-family controller with lower held-out cost than uniform random and non-LLM coordinate search?
+
+The *future live-study hypothesis* is that A has negative mean paired held-out cost differences against **both** B1 and B2 at N=20, without increased mean unsafe-state frequency. The primary metric is the equal-weight mean cost below; the decision rule is in §7. B0 is a declared, untuned fixed reference. There is no observed optimality gap and no known optimum. Budget efficiency here means outcome at one equal budget, not proven superiority across budgets or elapsed time.
+
+The present provider is **mock**, with zero network/API permissions and zero API budget. Mock output tests plumbing only. A-mock cannot support or contradict a claim about LLM efficacy. A real study requires a separately frozen run registration naming model/provider, prompt bytes/hash, context policy and spend limits before execution. That registration must reference this benchmark without changing its task, seeds, objective or budgets. No such study is authorized or implemented now.
+
+## 2. Dynamics and exogenous inputs
+
+For t=0,...,199 (T=200, unit timestep), compute:
+
+```
+e[t] = r[t] - x[t]
+x[t+1] = a*x[t] + b*u[t] + d[t] + epsilon[t]
+```
+
+All rollouts reset x[0]=0, previous action=0, previous integral=0. No warmup, burn-in, state clipping, measurement noise or online adaptation. The state is observed exactly; process noise acts after the action. Store T+1 states and T actions/errors/noise values. Each declared scenario receives equal weight.
+
+| Regime | a | b | action bound | noise SD | unsafe threshold | Disturbance |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| nominal | 0.9 | 0.2 | ±2 | 0.02 | 2.5 | zero |
+| disturbance-shift | 0.9 | 0.2 | ±2 | 0.02 | 2.5 | +0.15 at 80≤t<140; zero otherwise |
+| saturation-limited | 0.95 | 0.1 | ±0.35 | 0.02 | 2.5 | zero |
+
+Reference r[t] is 0 for 0≤t<40, +1 for 40≤t<100, −0.5 for 100≤t<160, +0.5 for 160≤t<200. It is fixed, not optimized or resampled. Disturbance intervals are half-open and nonoverlapping. A new schedule or regime is a new benchmark version.
+
+Noise is a *pseudorandom Gaussian* model with zero mean and declared SD, generated independently of candidates, methods and evaluation order. Exact algorithm `sha256-box-muller-v1`:
+
+1. For channel j=0,1, hash UTF-8 text `synthetic-pid-v1|noise|SCENARIO_ID|ROLLOUT_SEED|t|j`, with decimal integers, no spaces or trailing newline.
+2. Interpret the first 8 digest bytes as an unsigned big-endian integer, shift right 12 bits to get k in [0,2^52−1]. Set U=(k+0.5)/2^52 (strictly between 0 and 1 in float64).
+3. Let z=sqrt(−2*ln(U0))*cos(2*pi*U1); epsilon[t]=sigma*z. Discard the sine partner. Generate all T draws, including for failed candidates if needed to preserve the exogenous fixture.
+
+For a given scenario and rollout seed, every method/candidate gets the same noise sequence. Scenario ID separates streams; **do not include candidate, method, split label or search repetition in the noise key**. Numeric seed sets separate development/holdout. Unit tests must use reserved unit seeds or explicit hand-specified noise; never generate holdout arrays in smoke tests. The algorithm will be implemented/tested in Phase 2.2, not executed here. Record runtime/math implementation; bitwise portability across different math libraries is not promised.
+
+## 3. Controller contract and update order
+
+Candidate: exactly `{k_p, k_i, k_d, anti_windup}`. Gains are finite numbers on a 10^-6 grid, with inclusive bounds kp∈[0,2], ki∈[0,0.5], kd∈[0,0.5]; anti_windup is a Boolean. Reject unknown keys, booleans as gains, strings, NaN/infinity, out-of-bounds or off-grid proposals. Do not silently clamp/round model proposals. Search algorithms must construct grid-aligned candidates. Normalize signed zero only when forming duplicate keys. Duplicate identity is the three integer micro-gains plus Boolean, scoped to one method/repetition. Cross-method duplicates remain comparable evaluations.
+
+Set previous error to r[0]−x[0], so the initial derivative is zero. At each t, use the current error and prior stored integral:
+
+```
+D = e[t] - previous_error
+I_trial = clip(I_previous + e[t], -I_max, I_max)  # I_max=10
+v_trial = k_p*e[t] + k_i*I_trial + k_d*D
+pushes_further = (v_trial > u_max and e[t] > 0)
+                 or (v_trial < -u_max and e[t] < 0)
+I_used = I_previous if (anti_windup and pushes_further) else I_trial
+v = k_p*e[t] + k_i*I_used + k_d*D
+u[t] = clip(v, -u_max, u_max)
+```
+
+Then score the current state/action (§4), advance the plant, and store `I_previous=I_used`, `previous_error=e[t]`, `previous_action=u[t]`. Integral clipping applies in **both** anti-windup variants. The conditional test uses strict inequalities; equality at an actuator bound permits integration. Recompute v after rejecting integration. There is no derivative filter, dt scaling, back-calculation, parameter adaptation or generated code execution. Derivative changes at reference steps are included by design.
+
+Fixed B0/reference: kp=0.5, ki=0.05, kd=0, anti_windup=true. This is an arbitrary declared reference, **not an optimized or theoretically guaranteed controller**. Every search method starts by evaluating this same candidate, charged as its first budget slot.
+
+## 4. Objective, safety and failures
+
+The primary rollout cost to **minimize** is:
+
+```
+tracking = mean_t (r[t] - x[t])^2
+ effort  = mean_t u[t]^2
+ slew    = mean_t (u[t] - u[t-1])^2       # u[-1]=0
+ unsafe  = mean_t 1{|x[t]| > x_limit}
+J = tracking + 0.01*effort + 0.05*slew + 10*unsafe
+```
+
+Means use exactly T pre-update samples t=0,...,T−1. Report all four unweighted terms and their weighted contributions, not just J. Unsafe count is the numerator of unsafe; equality at x_limit is safe by this convention. Saturation is a separate diagnostic (count |v|>u_max), not an extra objective term. Record max |x| including x[T] and a separate terminal unsafe flag. **x[T] is not added to J or the T-sample unsafe rate.** No early stop merely for finite unsafe states; otherwise the denominator and budget would change.
+
+A candidate's development score is the equal mean over seeds inside each scenario, then the equal mean across all three scenarios. All methods receive identical task/scenarios/seeds/weights. Choose the lowest score; exact ties retain the earliest evaluated candidate (no tolerance-based improvement rule). Holdout cannot influence selection.
+
+Nonfinite state/action/integral/objective means candidate failure. Keep partial trajectories, reason and failing timestep; that candidate consumes its evaluation slot and is ranked at +infinity. Serialize failed numeric summaries as JSON null with explicit status, never JSON Infinity or a fabricated finite penalty. Count scheduled and completed rollouts/steps separately. Any numerical failure in the frozen-winner holdout evaluation makes the confirmatory comparison inconclusive; report it, do not omit the case. Environment errors stop the run as failed; resumption must reuse the same registration and logs, never replace seeds.
+
+## 5. Splits, repetitions and information boundary
+
+Exact integer arrays in config:
+
+- Development rollout seeds: 0–9 (10).
+- Final holdout rollout seeds: 1000–1029 (30).
+- Search repetition seeds: 2000–2009 (10).
+- Unit-test-only seeds: 3000–3009 (10).
+- Bootstrap RNG seed: 4000 (one, analysis only).
+
+All five sets are unique internally and pairwise disjoint. One rollout seed denotes a block spanning all three scenarios, with scenario-specific noise. All methods share the same seed block; the same rollout fixtures are reused across search repetitions. Repetitions vary proposal randomness, not task data. Deterministic methods may produce identical repetitions; do not pretend these are independent task observations.
+
+The evaluator owns full config, generation and final holdout. The proposer gets an allowlisted task/bounds description and bounded **development** history only—never the full config, holdout seeds, trajectories, metrics or artifacts. Published seed IDs are not security secrets; runtime isolation is still required. A validator proving disjoint arrays does not implement that isolation. The analyst cannot modify raw logs or send holdout feedback back into search.
+
+`holdout_enabled=false` in v1 means default future smoke runs are development-only. All methods/configs/prompts and every repetition's selected winner must be frozen before a separate, explicit local holdout evaluation invocation can enable read-only final evaluation. The benchmark file itself stays unchanged; that invocation is a separately recorded run setting. No holdout is generated or inspected in Phase 2.1. After holdout inspection, any tuning requires an exploratory label and a new untouched split for later confirmation. Keep a holdout-access log, including accidental inspections. No calibration split or tuning campaign is authorized by this freeze.
+
+## 6. Matched evaluation budget and baseline obligations
+
+One **candidate evaluation** means one validated candidate across all 3×10 development rollouts—not a single trajectory. Each B1/B2/A-mock search gets exactly 20 unique evaluated candidates per repetition, including the common initial reference. Thus each complete search schedules 600 development rollouts or 120,000 plant steps. Repeat with all 10 search seeds for a comparative study (6,000 development rollouts per method). These are derived budgets, not measured execution counts.
+
+At most 60 total proposal attempts per method/repetition, including the initial reference, bound invalid/duplicate retries. Rejected proposals consume attempts but no evaluation; accepted candidates that fail numerically consume an evaluation. No method receives extra evaluations, objective queries, pilot runs or hidden tuning. Memoization may save computation but must preserve logical evaluation accounting and raw provenance; never spend saved slots on more candidates. Log attempts, unique evaluations, scheduled/completed rollouts, failures, runtime and API usage separately.
+
+If fewer than 20 candidates are evaluated when attempts expire, label the search incomplete and exclude the confirmatory claim (do not cherry-pick only successful repetitions). Report the failure. Budget checkpoints may be descriptive; no best-checkpoint selection using holdout.
+
+B0 costs one evaluation (30 dev rollouts), not 20 repeated identical evaluations. Evaluate its 90 holdout rollouts once and reuse that fixed reference across comparisons; do not treat cached copies as independent samples or call B0 a budget-matched search. A frozen winner per search method/repetition costs 3×30=90 additional holdout rollouts (900 per method across repetitions), outside and separately reported from the development search budget. B1/B2/A must have equal holdout coverage.
+
+B1 will draw grid-aligned gains independently and uniformly within the same inclusive ranges and a fair Boolean anti-windup value, rejecting within-run duplicates. B2 must be deterministic non-LLM coordinate/local search with no gradient oracle or uncharged evaluations. Its exact traversal, step reductions and boundary handling, the search PRNG and the mock proposal sequence remain **implementation registrations to freeze before any benchmark scoring in Phases 2.3/3.2/3.3**. This phase fixes the benchmark and fairness contract, not unimplemented baseline algorithms. Those later choices must not be selected by comparing holdout outcomes.
+
+## 7. Predeclared comparison and uncertainty
+
+Future live study only: for each search repetition q and holdout rollout seed s, average J over the three scenarios. For comparator B, form D[q,s]=J_A[q,s]−J_B[q,s]. Primary effect is the grand mean of D, with equal weighting of q and s. Negative favors A. Report B0 descriptively as well as both primary B1/B2 comparisons; do not pick whichever comparator is easier to beat.
+
+Use a crossed paired bootstrap: 10,000 draws, seed 4000; independently resample 10 repetition indices and 30 rollout-seed indices with replacement, take their Cartesian product, and recompute the mean D. Use identical resampled indices across methods/comparisons. Keep the three scenarios together inside each seed block; never count 900 correlated trajectories as 900 independent samples. Freeze/record the bootstrap PRNG before analysis implementation; no analysis code runs now.
+
+For two primary comparisons, use percentile endpoints 0.0125 and 0.9875 (97.5% two-sided interval each, Bonferroni allocation of familywise alpha=0.05). Quantiles interpolate linearly at (n−1)*p in the sorted bootstrap estimates. These are approximate intervals with only 10 search repetitions/30 noise seeds; no exact finite-sample coverage or power is asserted.
+
+First check completeness and numerical validity; any failure of those conditions makes the outcome inconclusive before applying the following effect/safety rules.
+
+- **Supports** the hypothesis only if both cost intervals have upper bound <0, all runs have complete matched budgets, no frozen-winner numerical failures occur, and A's grand mean unsafe rate is no greater than each comparator's.
+- **Contradicts** the declared improvement claim if any cost interval has lower bound ≥0 or A has greater mean unsafe rate than either comparator (report numerical safety differences; this is a conservative gate, not a confidence-certified safety guarantee).
+- Otherwise **inconclusive**, including incomplete budgets or numerical failures. Do not equate failure to establish superiority with proof of equivalence.
+
+Report mean/median cost, per-scenario components and violations, paired absolute differences, intervals, failures, runtime and logical/physical budgets. Relative improvement is `100*(J_B−J_A)/J_B` only when mean J_B>10^-12; otherwise null with explanation. No claim of practical relevance follows merely from a negative difference; show its magnitude. Mock comparisons must always carry `llm_efficacy: not-tested`, irrespective of this rule.
+
+## 8. Conservative assumptions, biases and change control
+
+| Choice | Rationale and limitation |
+| --- | --- |
+| Stable scalar plants, finite horizon, bounded gains/actions/integral | Small CPU-first test; says little about nonlinear, high-dimensional or live systems. No stability theorem is claimed for the closed loop. |
+| Three equally weighted fixed regimes | Exposes a disturbance and saturation without tuning their prevalence. Holdout generalization is to new noise draws **within known regimes**, not unseen dynamics or tasks. |
+| Fixed reference schedule, small process noise | Reduces moving parts; may be too easy, induce ties or give narrow intervals. Do not increase difficulty after seeing final results. |
+| Saturation case cannot sustain +1 noiselessly | Its steady-state upper bound b*u_max/(1−a)=0.7 is a hand-calculated design property, not a run result. Persistent tracking error is expected; do not blame this on the proposer. |
+| Arbitrary reference, weights, I cap and unsafe threshold | Transparent defaults, not tuned, calibrated or empirically validated. Weight tradeoffs can favor some methods; freeze first, label future alternatives separately. |
+| Zero initial derivative; pre-update objective | Explicit conventions to avoid off-by-one and initial kick ambiguity. Terminal state diagnostic remains visible despite no terminal penalty. |
+| 6-decimal bounded candidate grid | Reproducible duplicate identity with negligible intended resolution burden; this is a restricted search family, not all controllers. |
+| N=20, 10 dev seeds, 10 search repeats, 30 holdout seeds | Modest predeclared budgets, not a power calculation. Additional data collection needs new registration rather than optional stopping. |
+| Shared noise and paired analysis | Reduces comparison noise; crossed resampling acknowledges reused tasks/repeats. It cannot establish population-wide efficacy. |
+| Zero API budget, holdout disabled | Keeps specification validation fully offline and avoids consuming final evaluation during software construction. |
+
+Config plus this specification are checksummed in `freeze-v1.json`; `node experiments/validate-spec.mjs` verifies both without rewriting them. Config schema is the strict typed contract in `spec-contract.mjs`, plus cross-field invariants. New fields are rejected, not silently ignored. Numeric alternatives belong in separately named/versioned configs with a logged rationale and new freeze, preserving v1. Never update a checksum simply to silence a failed validation. If a correctness bug forces a protocol amendment, document the issue and affected evidence before rerunning; inspected holdouts cannot become untouched again.
+
+Freeze metadata records the current Git revision plus dirty-worktree status; it does not invent a commit containing the new files. A future run must snapshot effective config, specification and implementation hashes/revision, runtime/dependencies, split lists, prompt/provider metadata, statuses and budget counts. Machine-readable candidate/per-seed records must distinguish failures from missing observations. No experiment log entry may contain fabricated numbers.

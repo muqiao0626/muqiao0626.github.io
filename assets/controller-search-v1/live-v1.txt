@@ -1,0 +1,33 @@
+# Phase 3.4 live LLM proposer registration v1
+
+Registered 2026-10-18 before any live model proposal or benchmark scoring for `A-live-proposer`. Supplements `synthetic-pid-v1` without modifying its plant dynamics, controller family, objective weights, seed splits, or evaluation budgets. Existing development outcomes for `B0-fixed`, `B1-uniform-random`, `B2-coordinate-search`, and `A-mock` are already known and disclosed; this registration is not blinded to prior baseline development scores. No holdout outcomes have been generated or inspected.
+
+## 1. Question, falsifiable hypothesis, and decision rule
+
+- **Question:** At a matched budget of 20 unique candidate evaluations (600 development rollouts, at most 60 proposal attempts, starting from the common reference candidate at slot 1), can a history-aware LLM proposer (`A-live-proposer`, running `Gemini 4 Argon (High)` via an isolated Antigravity subagent bridge) use bounded development feedback to select a PID controller with lower mean development cost than both the 10-stream `B1-uniform-random` mean (`0.09551889168934646`) and deterministic `B2-coordinate-search` (`0.09493370871628719`)?
+- **Falsifiable hypothesis (exploratory development scope):** On repetition seed `2000`, `A-live-proposer` completes all 20 unique candidate evaluations within at most 60 attempts, records zero unsafe pre-update states on its selected controller, and achieves negative mean development cost differences against both comparators:
+  - `D_B1 = J_dev(A-live-proposer, 2000) - mean_q J_dev(B1-uniform-random, q) < 0`
+  - `D_B2 = J_dev(A-live-proposer, 2000) - J_dev(B2-coordinate-search, 2000) < 0`
+- **Decision rule:**
+  - **Inconclusive** if fewer than 20 unique candidates are evaluated within 60 attempts, or if any rollout is interrupted or encounters an evaluation error.
+  - **Supports exploratory development direction** if the 20-candidate budget completes with zero unsafe pre-update states on the selected winner and both `D_B1 < 0` and `D_B2 < 0`.
+  - **Contradicts exploratory development direction** if the 20-candidate budget completes and `D_B1 >= 0`, `D_B2 >= 0`, or the selected winner has unsafe pre-update states `> 0`.
+- **Scope and limitations:** One repetition (`2000`) evaluated on the 30 development rollouts used for incumbent selection measures in-run search behavior and validates the live proposer workflow; it does not establish out-of-sample generalization on the untouched holdout split (`1000..1029`) or multi-repetition statistical significance under `SPEC_v1.md` §7. Holdout evaluation remains disabled (`holdout_enabled = false`).
+
+## 2. Provider, model, and information boundary
+
+- **Method identifier:** `A-live-proposer`
+- **Provider adapter:** `antigravity-subagent-bridge-v1`
+- **Model identifier:** `gemini-4-argon-high` (Antigravity session quota; `$0` marginal API spend)
+- **Prompt template:** `prompts/proposer_v1.txt` (SHA-256 `df30ca4d69d247544dff30daa8e4dddce92e9569a0ed15dab4db8aedba90e45c`, identical to the frozen prompt contract in `mock-freeze-v1.json`).
+- **Session isolation policy:** One blinded subagent conversation per search repetition (`one-blinded-subagent-per-repetition`). The subagent is defined with `enable_write_tools = false`, `enable_subagent_tools = false`, and `enable_mcp_tools = false`, and is explicitly instructed never to call any read/search tools. Post-run verification audits the subagent metadata/transcript to confirm zero tool calls occurred.
+- **Input context contract:**
+  - Attempt `0` (`attempt_index = 0`) deterministically emits the required initial reference controller (`k_p = 0.5, k_i = 0.05, k_d = 0.0, anti_windup = true`), consuming `0` live model calls and reserving Evaluation Slot 1, matching `B1-uniform-random` and `B2-coordinate-search`.
+  - Each subsequent attempt (`1 <= attempt_index < 60`) constructs `checked = make_context(task, limits, attempt_index, history)` using `ip_research.providers.make_context` with `HISTORY_LIMIT = 5`, and forms the exact request string `request = prompt_text + canonical_json(checked) + "\n"`.
+  - Only allowlisted task bounds/weights, `attempt_index`, the current lowest-cost completed development `incumbent`, and the last `5` completed/failed development summaries enter `checked`. Scenario plant constants (`a, b, d[t]`), rollout noise values, seed IDs, and holdout splits are never exposed.
+
+## 3. Validation, budgets, checkpointing, and deterministic replay
+
+- **Strict validation:** Raw model responses are passed unaltered (after stripping only a single trailing newline if present from transport) to `CandidateRegistry.submit(raw_response)`. Markdown code fences, extra prose, extra/missing JSON keys, off-grid decimals, out-of-bounds gains, non-finite numbers, or within-run duplicate parameter tuples are rejected without silent clamping or repair.
+- **Budget accounting:** Rejected proposals consume one attempt from the 60-attempt cap and zero evaluation slots. Accepted proposals reserve the next evaluation slot (up to 20) before any rollout is simulated.
+- **Checkpointing and replay:** Every proposal attempt, raw model response, `request_sha256`, `context_sha256`, subagent `conversation_id`, and rollout result is atomically checkpointed in schema-v2 format alongside `raw_responses.jsonl`. Offline replay (`--replay`) reconstructs the complete 20-candidate / 600-rollout run from `raw_responses.jsonl` with zero live model calls and verifies exact hash and metric parity.

@@ -1,0 +1,25 @@
+method,display_name,component,weighted_cost
+B0-fixed,B0 reference,tracking,0.170879066
+B0-fixed,B0 reference,effort,0.001381299
+B0-fixed,B0 reference,slew,0.000302176
+B0-fixed,B0 reference,unsafe,0.000000000
+B1-uniform-random,B1 uniform (mean),tracking,0.090043861
+B1-uniform-random,B1 uniform (mean),effort,0.002426232
+B1-uniform-random,B1 uniform (mean),slew,0.002512518
+B1-uniform-random,B1 uniform (mean),unsafe,0.000000000
+B2-coordinate-search,B2 coordinate,tracking,0.089906376
+B2-coordinate-search,B2 coordinate,effort,0.002405125
+B2-coordinate-search,B2 coordinate,slew,0.002048716
+B2-coordinate-search,B2 coordinate,unsafe,0.000000000
+A-mock,Scripted mock,tracking,0.093631885
+A-mock,Scripted mock,effort,0.002272620
+A-mock,Scripted mock,slew,0.001971688
+A-mock,Scripted mock,unsafe,0.000000000
+A-live-no-history,A-live (no history),tracking,0.093276362
+A-live-no-history,A-live (no history),effort,0.002299368
+A-live-no-history,A-live (no history),slew,0.001735208
+A-live-no-history,A-live (no history),unsafe,0.000000000
+A-live-proposer,A-live (Argon High),tracking,0.087061845
+A-live-proposer,A-live (Argon High),effort,0.002474051
+A-live-proposer,A-live (Argon High),slew,0.002526681
+A-live-proposer,A-live (Argon High),unsafe,0.000000000

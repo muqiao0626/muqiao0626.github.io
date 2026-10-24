@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Random, coordinate, and live LLM search at a fixed budget — Mu Qiao</title>
+<meta name="description" content="A bounded synthetic controller-search study, a promising frozen candidate, and the limits of one live search at a 20-evaluation budget."><meta name="theme-color" content="#f7f5ef">
+<meta property="og:title" content="Random, coordinate, and live LLM search at a fixed budget — Mu Qiao"><meta property="og:description" content="A bounded synthetic controller-search study, a promising frozen candidate, and the limits of one live search at a 20-evaluation budget.">
+<meta property="og:site_name" content="Mu Qiao">
+<meta name="twitter:card" content="summary"><meta name="twitter:title" content="Random, coordinate, and live LLM search at a fixed budget — Mu Qiao"><meta name="twitter:description" content="A bounded synthetic controller-search study, a promising frozen candidate, and the limits of one live search at a 20-evaluation budget.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://muqiao0626.github.io/writing/random-and-coordinate-search-development-note/"><meta property="og:url" content="https://muqiao0626.github.io/writing/random-and-coordinate-search-development-note/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+</head><body id="top"><a class="skip-link" href="#main">Skip to content</a><div class="page">
+<header><a class="wordmark" href="/" aria-label="Mu Qiao, home">mq<span>.</span></a><nav aria-label="Main navigation"><a href="/">Home</a><a href="/research/">Research</a><a href="/writing/" aria-current="page">Writing</a><a href="/projects/">Projects</a><a href="/about/">About</a></nav></header>
+<main id="main" tabindex="-1"><p class="article-series"><a class="text-link" href="/writing/self-improving-ai-lab/">The Self-Improving AI Lab</a></p><section class="page-intro"><p class="eyebrow">essay</p><h1>Random, coordinate, and live LLM search at a fixed budget</h1><p class="lead">A bounded synthetic controller-search study, a promising frozen candidate, and the limits of one live search at a 20-evaluation budget.</p></section><article class="prose"><p class="byline">2026-10-24 · Updated 2026-10-24</p><h2>What does a small baseline and proposer comparison tell us?</h2>
+<p>Before asking whether an AI proposer improves a controller, we need to understand what simpler searches achieve under the same evaluation budget—and then test an isolated language model under identical constraints. This note examines both questions on a deliberately small synthetic task:</p>
+<ol>
+<li>Can a fixed-rule coordinate search (<code>B2</code>) find a lower development cost than the average uniform-random search (<code>B1</code>) after 20 candidate evaluations?</li>
+<li>Under the exact same 20-evaluation budget and development-only context contract, can a tool-free, blinded live LLM proposer (<code>A-live-proposer</code>, recorded model label <code>gemini-4-argon-high</code>, repetition <code>2000</code>) outperform both <code>B1</code> and <code>B2</code> without unsafe rollouts?</li>
+<li>Do the selected controller parameters generalize to an untouched, one-shot holdout split (<code>seeds 1000..1029</code>, 90 rollouts per candidate) on the registered holdout cases?</li>
+</ol>
+<p>On the baseline development comparison, coordinate search (<code>0.094934</code>) finishes slightly ahead of the random-search mean (<code>0.095519</code>), though random search wins five of the ten individual comparisons, has a slightly better median (<code>0.094902</code>), and leads at intermediate budgets (5, 10, and 15 evaluations). When the blinded live proposer (<code>A-live-proposer</code>, <code>seed 2000</code>) is evaluated under the same 20-candidate budget, it reaches <code>0.092980</code> by evaluation 5 and finishes at <strong><code>0.092429</code></strong> (slot 19), beating <code>B2</code> (<code>-0.002504</code>), the <code>B1</code> mean (<code>-0.003089</code>), <code>B1</code> seed <code>2000</code> (<code>-0.000965</code>), and <strong>all 10</strong> <code>B1</code> streams.</p>
+<p>No holdout evaluation was permitted or accessed during candidate proposal, tuning, or winner selection. The frozen development winners were subsequently evaluated on the preregistered one-shot holdout split (<code>seeds 1000..1029</code>, 90 rollouts per distinct candidate). Their aggregate costs were lower on these holdout cases; this is a finite-sample observation, not proof that development selection avoided overfitting. On holdout, <code>A-live-proposer</code> finishes at <strong><code>0.092063</code></strong>, maintaining its cost advantage over <code>B1</code> (mean <code>0.094983</code>, best seed <code>0.093045</code>) and <code>B2</code> (<code>0.094360</code>), supporting the preregistered exploratory seed-2000 holdout gate (10,000 crossed bootstrap replicates, seed 4000: vs <code>B1</code> crossed 97.5% CI <code>[-0.004664, -0.001738]</code>; vs <code>B2</code> 97.5% CI <code>[-0.002525, -0.002069]</code>). Because repetitions <code>2001..2009</code> were unrun, the 10-repetition confirmatory gate remains strictly recorded as <code>inconclusive-incomplete-search-repetitions</code>.</p>
+<h2>The task and comparison</h2>
+<p>The <a href="/assets/controller-search-v1/spec-v1.txt">frozen specification</a> defines a scalar plant with nominal, disturbance-shift, and saturation-limited regimes. Each rollout lasts 200 steps and follows the same piecewise-constant target schedule. The controller has proportional, integral, and derivative gains plus a Boolean anti-windup option. Gains are constrained to <code>kp</code> in <code>[0, 2]</code> and <code>ki</code>/<code>kd</code> in <code>[0, 0.5]</code>, on a six-decimal grid. The simulator and evaluator own the dynamics and scoring; a proposal cannot supply executable code.</p>
+<p>Cost is the average of squared tracking error, plus <code>0.01</code> times control effort, plus <code>0.05</code> times squared changes in control, plus <code>10</code> times the unsafe-state fraction. The objective uses pre-update states. Terminal state is excluded from cost but included in maximum-state and terminal-safety diagnostics. Each candidate is scored on development seeds <code>0–9</code> in all three regimes, for 30 rollouts. Those same cases are reused throughout selection and comparison.</p>
+<p>Five methods are recorded across the baseline study and Phase 3.4 live proposer study:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Procedure</th>
+<th class="align-right">Evaluations per run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B0</td>
+<td>Fixed, untuned reference: <code>kp=0.5, ki=0.05, kd=0</code>, anti-windup enabled</td>
+<td class="align-right">1</td>
+</tr>
+<tr>
+<td>B1</td>
+<td>Registered uniform sampling over the permitted controller family (10 seeds: <code>2000–2009</code>)</td>
+<td class="align-right">20</td>
+</tr>
+<tr>
+<td>B2</td>
+<td>Registered best-sweep coordinate search with projected neighbors and duplicate rejection</td>
+<td class="align-right">20</td>
+</tr>
+<tr>
+<td>Mock</td>
+<td>A fixed script of controller proposals (<code>A-mock</code>), used to check the research software</td>
+<td class="align-right">20</td>
+</tr>
+<tr>
+<td>A-live</td>
+<td>Blinded <code>gemini-4-argon-high</code> subagent proposer (<code>A-live-proposer</code>, <code>seed 2000</code>) using development-only history</td>
+<td class="align-right">20</td>
+</tr>
+</tbody>
+</table>
+<p>Every search charges the reference as its first evaluation. Up to 60 proposal attempts are allowed; rejected duplicates consume attempts but do not receive another evaluation. The winner is the lowest-cost successful candidate, with the earliest candidate winning an exact tie. B0 is a reference, not a budget-matched search.</p>
+<p>The <a href="/assets/controller-search-v1/development-comparison-v1.txt">baseline comparison registration</a> and <a href="/assets/controller-search-v1/live-v1.txt">live proposer registration</a> specified the directional questions and descriptive analyses before execution. For <code>A-live-proposer</code>, the subagent was spawned in an isolated conversation under the recorded tool-free protocol (the saved Phase 3.4 audit reports <code>0</code> tool calls; this review did not independently inspect the external platform configuration) and received only <code>make_context(...)</code> JSON (task dynamics, controller bounds, objective weights, and development-only <code>mean_cost</code> / <code>unsafe_rate</code> history).</p>
+<h2>Effective search paths and selected outcomes</h2>
+<p>B1 uses ten registered search streams (<code>2000–2009</code>). B2 and the mock ignore the repetition ID; their ten physical executions each reproduced the exact same candidate sequence, metrics, and trajectory hashes, so the analysis counts <strong>one deterministic path</strong> for B2 and one for the mock. <code>A-live-proposer</code> was executed once on the preregistered primary repetition (<code>seed 2000</code>) and verified via an offline deterministic replay from its saved response log.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th class="align-right">Effective paths</th>
+<th class="align-right">Mean selected cost</th>
+<th class="align-right">Median</th>
+<th class="align-right">Search sample SD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B0 reference</td>
+<td class="align-right">1</td>
+<td class="align-right">0.172740</td>
+<td class="align-right">0.172740</td>
+<td class="align-right">Not estimated</td>
+</tr>
+<tr>
+<td>B1 uniform</td>
+<td class="align-right">10</td>
+<td class="align-right">0.095519</td>
+<td class="align-right">0.094902</td>
+<td class="align-right">0.002495</td>
+</tr>
+<tr>
+<td>B2 coordinate</td>
+<td class="align-right">1</td>
+<td class="align-right">0.094934</td>
+<td class="align-right">0.094934</td>
+<td class="align-right">Not estimated</td>
+</tr>
+<tr>
+<td>Scripted mock</td>
+<td class="align-right">1</td>
+<td class="align-right">0.098299</td>
+<td class="align-right">0.098299</td>
+<td class="align-right">Not estimated</td>
+</tr>
+<tr>
+<td>A-live (recorded model, seed 2000)</td>
+<td class="align-right">1</td>
+<td class="align-right">0.092429</td>
+<td class="align-right">0.092429</td>
+<td class="align-right">Not estimated</td>
+</tr>
+</tbody>
+</table>
+<p>Lower is better. B1's observed selected costs range from <code>0.093394</code> (seed <code>2000</code>) to <code>0.102106</code> (seed <code>2001</code>). Its sample SD describes variation across search streams on these fixed cases; it is not a confidence interval or an estimate of uncertainty on new tasks.</p>
+<p><a href="/assets/controller-search-v1/development/search-outcomes.png"><img src="/assets/controller-search-v1/development/search-outcomes.png" alt="Selected costs for all ten uniform-search streams, compared with deterministic B2, mock, and Phase 3.4 A-live results."></a></p>
+<p>On the baseline comparison alone, B2 minus the B1 mean is <code>-0.000585183</code> (about <code>0.61%</code> of B1's mean), with a five-five split across individual B1 streams. Adding <code>A-live-proposer</code> (<code>0.092429429500</code>) has a lower single-run development cost by <code>-0.002504279216</code> (<code>-2.64%</code>) relative to B2 and <code>-0.003089462189</code> (<code>-3.23%</code>) relative to the B1 mean. Because <code>A-live-proposer</code> has only one search path (<code>seed 2000</code>), this supports the preregistered exploratory development direction without establishing multi-seed statistical significance.</p>
+<h2>How the evaluation budget shapes each search</h2>
+<p><a href="/assets/controller-search-v1/development/budget.png"><img src="/assets/controller-search-v1/development/budget.png" alt="Best-so-far development cost against charged candidate evaluations across B0, B1, B2, Mock, and A-live."></a></p>
+<table>
+<thead>
+<tr>
+<th class="align-right">Evaluations</th>
+<th class="align-right">B1 mean incumbent</th>
+<th class="align-right">B2 incumbent</th>
+<th class="align-right">Mock incumbent</th>
+<th class="align-right">A-live incumbent (seed 2000)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">0.172740</td>
+<td class="align-right">0.172740</td>
+<td class="align-right">0.172740</td>
+<td class="align-right">0.172740</td>
+</tr>
+<tr>
+<td class="align-right">5</td>
+<td class="align-right">0.100814</td>
+<td class="align-right">0.121489</td>
+<td class="align-right">0.126323</td>
+<td class="align-right">0.092980</td>
+</tr>
+<tr>
+<td class="align-right">10</td>
+<td class="align-right">0.097346</td>
+<td class="align-right">0.103658</td>
+<td class="align-right">0.109513</td>
+<td class="align-right">0.092447</td>
+</tr>
+<tr>
+<td class="align-right">15</td>
+<td class="align-right">0.097161</td>
+<td class="align-right">0.098807</td>
+<td class="align-right">0.098299</td>
+<td class="align-right">0.092430</td>
+</tr>
+<tr>
+<td class="align-right">20</td>
+<td class="align-right">0.095519</td>
+<td class="align-right">0.094934</td>
+<td class="align-right">0.098299</td>
+<td class="align-right">0.092429</td>
+</tr>
+</tbody>
+</table>
+<p>Between B1 and B2, B1's mean incumbent is lower at 5, 10, and 15 evaluations (<code>0.100814</code> vs <code>0.121489</code> at slot 5), while B2 only catches up near the end of its fourth coordinate sweep (selecting slot 19, <code>kp=1.5, ki=0.3, kd=0, anti_windup=true</code>). By contrast, <code>A-live-proposer</code> combines analytical reasoning about the plant dynamics (<code>a=0.9, b=0.2</code> and <code>a=0.95, b=0.1</code>) with iterative score feedback:</p>
+<ul>
+<li><strong>Slots 2–7 (coarse regime identification):</strong> Starting from the reference controller (<code>kp=0.5, ki=0.05, kd=0.0</code>, cost <code>0.172740</code>), it tests analytical critical damping (<code>kp=1.2, ki=0.2, kd=0.0</code> -&gt; <code>0.099146</code> at slot 2), sees that higher gains improve tracking (<code>kp=1.8, ki=0.32, kd=0.0</code> -&gt; <code>0.093799</code> at slot 3; <code>kp=1.85, ki=0.45, kd=0.0</code> -&gt; <code>0.092980</code> at slot 5), and reaches the upper proportional-integral corner (<code>kp=2.0, ki=0.5, kd=0.0</code> -&gt; <code>0.092447</code> at slot 7), before testing positive <code>kd</code> (<code>0.01</code>, <code>0.002</code>) and interior <code>ki</code> (<code>0.485</code>) across slots 8–10. Those particular proposals did not improve the incumbent; they do not rule out other gains.</li>
+<li><strong>Slots 11–20 (bisecting a conditional-integration discontinuity):</strong> Probing interior <code>kp</code> values (<code>1.96</code> -&gt; <code>0.092445</code> at slot 11; <code>1.978</code> -&gt; <code>0.092431</code> at slot 12), it predicts a smooth quadratic minimum at <code>kp=1.97935</code> (slot 13) but observes an upward cost step to <code>0.092471</code>. Its recorded rationale hypothesizes a switch in conditional integration near a saturation threshold, then bisects <code>[1.978, 1.97935]</code> down to <code>[1.978644, 1.978666]</code>, selecting slot 19 (<code>kp=1.978644, ki=0.5, kd=0.0, anti_windup=true</code>, cost <code>0.092429429500</code>).</li>
+</ul>
+<h2>Where the cost and constraints appear</h2>
+<p><a href="/assets/controller-search-v1/development/regimes.png"><img src="/assets/controller-search-v1/development/regimes.png" alt="Selected costs broken down by nominal, disturbance-shift and saturation-limited regimes."></a></p>
+<p>Across all methods, the <code>saturation-limited</code> regime (<code>a=0.95, b=0.1, u_max=0.35</code>) dominates total cost because its noiseless steady-state ceiling during the <code>+1</code> target segment is <code>b * u_max / (1 - a) = 0.7</code>. Relative to <code>B2</code> (<code>nominal=0.042638, disturbance-shift=0.054183, saturation-limited=0.187979</code>) and the <code>B1</code> mean (<code>nominal=0.042504, disturbance-shift=0.054426, saturation-limited=0.189627</code>), <code>A-live-proposer</code> lowers cost in all three regimes simultaneously (<code>nominal=0.039931, disturbance-shift=0.049875, saturation-limited=0.187482</code>), with the largest absolute reductions in <code>disturbance-shift</code> (<code>-0.004308</code> vs B2) and <code>nominal</code> (<code>-0.002707</code> vs B2) while using a higher integral gain (<code>ki=0.5</code>). These aggregate comparisons do not isolate the cause of the improvement.</p>
+<p><a href="/assets/controller-search-v1/development/components.png"><img src="/assets/controller-search-v1/development/components.png" alt="Weighted tracking, effort, slew and unsafe contributions to each method's selected cost."></a></p>
+<p>Tracking error dominates the weighted objective across all five methods (<code>0.087431</code> of <code>0.092429</code> for <code>A-live-proposer</code>, <code>0.090490</code> of <code>0.094934</code> for <code>B2</code>), while weighted effort (<code>0.002468</code>) and slew (<code>0.002530</code>) remain small but consequential for fine-grained ranking.</p>
+<p><a href="/assets/controller-search-v1/development/safety.png"><img src="/assets/controller-search-v1/development/safety.png" alt="Maximum absolute state and actuator saturation for each selected controller; B1 shows ten points."></a></p>
+<p>No numerical failures, unknown diagnostics, unsafe pre-update states, or unsafe terminals were recorded across any baseline or live run. Across the 600 development rollouts of <code>A-live-proposer</code>, maximum absolute state was <code>1.614522</code> (<code>1.259079</code> for its selected winner), well below the <code>2.5</code> safety threshold. Its selected winner saturated on <code>1,116 / 6,000</code> steps (<code>18.60%</code>), within the range of the ten <code>B1</code> winners (<code>15.03%–26.43%</code>) and slightly above <code>B2</code> (<code>16.93%</code>). Saturation is a separate actuator-constraint diagnostic, not a safety violation.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th class="align-right">Physical runs</th>
+<th class="align-right">Duplicate rejections</th>
+<th class="align-right">Failed candidates</th>
+<th class="align-right">Unsafe terminals</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B0</td>
+<td class="align-right">1</td>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td class="align-right">0 / 30</td>
+</tr>
+<tr>
+<td>B1</td>
+<td class="align-right">10</td>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td class="align-right">0 / 6,000</td>
+</tr>
+<tr>
+<td>B2</td>
+<td class="align-right">10</td>
+<td class="align-right">80</td>
+<td class="align-right">0</td>
+<td class="align-right">0 / 6,000</td>
+</tr>
+<tr>
+<td>Mock</td>
+<td class="align-right">10</td>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td class="align-right">0 / 6,000</td>
+</tr>
+<tr>
+<td>A-live (seed 2000)</td>
+<td class="align-right">1</td>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td class="align-right">0 / 600</td>
+</tr>
+</tbody>
+</table>
+<p><code>A-live-proposer</code> completed all 20 unique evaluations in 20 attempts (<code>0</code> duplicate or invalid rejections).</p>
+<h2>Phase 3.5 focused ablations: outcome feedback vs. analytical prior and conditional anti-windup</h2>
+<p>To compare one search with outcome feedback against one without it, and examine conditional anti-windup (<code>anti_windup=true</code>), the project executed the preregistered <a href="/assets/controller-search-v1/ablations-v1.txt">ablation suite</a> (<a href="/assets/controller-search-v1/evidence.json">saved numeric results</a>) on the development split (<code>seed 2000</code>, <code>holdout_evaluations = 0</code>):</p>
+<ol>
+<li><strong>Proposer outcome feedback ablation (<code>A-live-no-history</code> vs. <code>A-live-proposer</code>):</strong> A fresh blinded subagent (the same recorded model label) received the identical <code>proposer_v1</code> prompt and plant specification across 20 evaluation slots, but with <code>history: []</code> and <code>incumbent: null</code> on every turn (<code>A-live-no-history-2000-8d99cfeedf0d</code>). The recorded no-feedback rationales emphasize linear pole-placement calculations around critical damping (<code>z \approx 0.80</code>), sampling 19 distinct candidates clustered in <code>kp in [1.05, 1.35], ki in [0.15, 0.22], kd in [0.0, 0.03]</code> and selecting slot 15 (<code>kp=1.32, ki=0.21, kd=0.015, anti_windup=true</code>) with mean cost <strong><code>0.097565345</code></strong>. This no-feedback search beats <code>B0-fixed</code> (<code>0.172740</code>) and <code>A-mock</code> (<code>0.098299</code>), <strong>but loses to <code>B2-coordinate-search</code> (<code>0.094934</code>, <code>-0.002632</code>) and the <code>B1-uniform-random</code> mean (<code>0.095519</code>, <code>-0.002046</code>)</strong>. The observed development-cost gap is <code>\Delta_history = +0.005135916</code> (<code>0.097565 -&gt; 0.092429</code>) in favor of the history-aware run. One run per condition cannot establish that feedback is necessary or isolate its average causal effect from model sampling variation. The no-history condition removes outcome feedback; it is not a fresh zero-shot model call at every proposal.</li>
+<li><strong>Controller conditional anti-windup ablation (<code>anti_windup=false</code> vs. <code>true</code>):</strong> The registered no-anti-windup variants have higher development costs in all five selected comparisons: <code>B0</code> (<code>0.172740 -&gt; 0.175564</code>, <code>+0.002824</code>, <code>100%</code> in <code>saturation-limited</code>), <code>B1</code> seed <code>2000</code> (<code>0.093394 -&gt; 0.102579</code>, <code>+0.009185</code>), <code>B2</code> seed <code>2000</code> (<code>0.094934 -&gt; 0.098565</code>, <code>+0.003631</code>), <code>A-live</code> trajectory best (<code>0.092429 -&gt; 0.098759</code> at slot 4, <code>+0.006329</code>), and the <code>A-live</code> slot 19 winner evaluated with <code>anti_windup=false</code> (<code>0.092429 -&gt; 0.114023</code>, <strong><code>+0.021593</code></strong>, driven by a <code>+0.060461</code> surge in <code>saturation-limited</code> cost). The exact-gain live pair isolates the Boolean switch and shows its benefit for that controller. B1/B2 rerun their registered searches with the flag disabled; the live counterfactual re-scores the saved proposal sequence rather than running a new live search. Those selected-winner contrasts also change gains and do not isolate the switch alone.</li>
+</ol>
+<h2>One-shot final holdout evaluation (<code>seeds 1000..1029</code>)</h2>
+<p>Following Phase 3.5, all candidate parameters were frozen and preregistered in <a href="/assets/controller-search-v1/holdout-v1.txt"><code>experiments/HOLDOUT_v1.md</code></a> before executing the one-shot evaluation on the untouched holdout split (<code>seeds 1000..1029</code>, 3 scenarios $\times$ 30 seeds = 90 rollouts per candidate; 1,800 physical holdout rollouts total). A separate saved trajectory bundle contains 18 development examples and 18 holdout examples (36 rollouts, 7,200 rows). The historical execution therefore used 363,600 holdout noise draws and 3,600 development draws. This review reads those records without new simulation.</p>
+<p><a href="/assets/controller-search-v1/holdout/holdout-generalization.png"><img src="/assets/controller-search-v1/holdout/holdout-generalization.png" alt="Development versus holdout cost for the main frozen winners; the diagonal indicates equal cost, not a test of no overfitting."></a></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Scope</th>
+<th>Frozen <code>(k_p, k_i, k_d, aw)</code></th>
+<th class="align-right">Development cost</th>
+<th class="align-right">Holdout cost</th>
+<th class="align-right">Holdout − Dev</th>
+<th class="align-right">Saturation %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>A-live-proposer</code></td>
+<td>seed 2000</td>
+<td><code>(1.978644, 0.5, 0.0, true)</code></td>
+<td class="align-right"><code>0.092429429</code></td>
+<td class="align-right"><strong><code>0.092062577</code></strong></td>
+<td class="align-right"><code>-0.000366853</code></td>
+<td class="align-right"><code>18.74%</code></td>
+</tr>
+<tr>
+<td><code>A-live-no-history</code></td>
+<td>seed 2000</td>
+<td><code>(1.32, 0.21, 0.015, true)</code></td>
+<td class="align-right"><code>0.097565345</code></td>
+<td class="align-right"><code>0.097310937</code></td>
+<td class="align-right"><code>-0.000254408</code></td>
+<td class="align-right"><code>16.20%</code></td>
+</tr>
+<tr>
+<td><code>B2-coordinate-search</code></td>
+<td>10 reps (1 path)</td>
+<td><code>(1.5, 0.3, 0.0, true)</code></td>
+<td class="align-right"><code>0.094933709</code></td>
+<td class="align-right"><code>0.094360217</code></td>
+<td class="align-right"><code>-0.000573492</code></td>
+<td class="align-right"><code>17.11%</code></td>
+</tr>
+<tr>
+<td><code>B1-uniform-random</code></td>
+<td>seed 2000</td>
+<td><code>(1.680415, 0.486781, 0.125107, true)</code></td>
+<td class="align-right"><code>0.093394059</code></td>
+<td class="align-right"><code>0.093045116</code></td>
+<td class="align-right"><code>-0.000348943</code></td>
+<td class="align-right"><code>17.98%</code></td>
+</tr>
+<tr>
+<td><code>B1</code> mean (SD <code>0.002248</code>)</td>
+<td>10 reps</td>
+<td>—</td>
+<td class="align-right"><code>0.095518892</code></td>
+<td class="align-right"><code>0.094982611</code></td>
+<td class="align-right"><code>-0.000536280</code></td>
+<td class="align-right">—</td>
+</tr>
+<tr>
+<td><code>A-mock</code> (fixture)</td>
+<td>10 reps (1 path)</td>
+<td><code>(1.4, 0.2, 0.1, true)</code></td>
+<td class="align-right"><code>0.098298753</code></td>
+<td class="align-right"><code>0.097876193</code></td>
+<td class="align-right"><code>-0.000422559</code></td>
+<td class="align-right"><code>16.55%</code></td>
+</tr>
+<tr>
+<td><code>B0-fixed</code></td>
+<td>reference</td>
+<td><code>(0.5, 0.05, 0.0, true)</code></td>
+<td class="align-right"><code>0.172739954</code></td>
+<td class="align-right"><code>0.172562541</code></td>
+<td class="align-right"><code>-0.000177414</code></td>
+<td class="align-right"><code>4.89%</code></td>
+</tr>
+</tbody>
+</table>
+<p>The table shows method means and the B1 seed-2000 example. Across the ten individual B1 winners, holdout-minus-development shifts range from <code>-0.001287395</code> to <code>-0.000279986</code>; they do not all lie within ±0.0006. The live candidate’s nominal-regime cost increases from <code>0.039931</code> to <code>0.040747</code>, despite its lower aggregate holdout cost. Zero numerical failures, unsafe pre-update states and unsafe terminals were recorded in the 1,800 evaluation rollouts. This does not establish safety outside the tested cases.</p>
+<h3>Preregistered bootstrap inference and decision gates</h3>
+<p><a href="/assets/controller-search-v1/holdout/holdout-bootstrap.png"><img src="/assets/controller-search-v1/holdout/holdout-bootstrap.png" alt="Holdout paired bootstrap differences (10,000 replicates, seed 4000) showing 97.5% Bonferroni and 95% descriptive CIs."></a></p>
+<p>The registered bootstrap uses 10,000 replicates (PRNG seed <code>4000</code>, <code>sha256-rejection-u64-v1</code>), resampling whole seed blocks across the three scenarios. P1 also resamples B1 search repetitions; P2 resamples seed blocks only. Both condition on the single frozen live candidate, so neither captures live-search variability:</p>
+<ul>
+<li><strong>Primary comparison P1 (<code>A-live</code> vs. <code>B1</code> 10-rep crossed):</strong> Mean difference is <strong><code>-0.002920</code></strong> (relative improvement <code>+3.07%</code>), with 97.5% Bonferroni CI <strong><code>[-0.004664, -0.001738]</code></strong> (95% CI <code>[-0.004399, -0.001837]</code>), winning <code>30/30</code> holdout seed blocks and <code>10/10</code> repetition slots.</li>
+<li><strong>Primary comparison P2 (<code>A-live</code> vs. <code>B2</code> deterministic):</strong> Mean difference is <strong><code>-0.002298</code></strong> (relative improvement <code>+2.43%</code>), with 97.5% Bonferroni CI <strong><code>[-0.002525, -0.002069]</code></strong>, winning <code>30/30</code> holdout seed blocks.</li>
+<li><strong>Decision gates:</strong> The exploratory seed-2000 live holdout gate is <strong><code>supports-seed2000-holdout-direction</code></strong>. Under SPEC §6–§7, the 10-repetition confirmatory gate requires all 10 live repetitions; because repetitions <code>2001..2009</code> were preregistered as <code>not_run</code>, it is strictly labeled <strong><code>inconclusive-incomplete-search-repetitions</code></strong>.</li>
+<li><strong>Descriptive ablations on holdout:</strong> <code>A-live (2000)</code> vs. <code>A-live-no-history (2000)</code> has holdout difference <strong><code>-0.005248</code></strong> (97.5% CI <code>[-0.005664, -0.004863]</code>). For the five registered no-anti-windup contrasts, all 5 pairs show strictly positive holdout cost degradation without anti-windup (all nominal 97.5% intervals are above zero, reaching <code>+0.021453</code> for exact gains). These secondary intervals are not familywise-adjusted across the five ablations and do not establish that feedback or anti-windup is universally necessary.</li>
+</ul>
+<p><a href="/assets/controller-search-v1/holdout/holdout-anti-windup.png"><img src="/assets/controller-search-v1/holdout/holdout-anti-windup.png" alt="Holdout cost degradation without anti-windup across all five ablation pairs."></a></p>
+<h3>Mechanism and trajectory analysis</h3>
+<p><a href="/assets/controller-search-v1/holdout/trajectories-nominal.png"><img src="/assets/controller-search-v1/holdout/trajectories-nominal.png" alt="State tracking and control action time series on holdout seed 1000 under nominal conditions."></a></p>
+<p><a href="/assets/controller-search-v1/holdout/trajectories-disturbance.png"><img src="/assets/controller-search-v1/holdout/trajectories-disturbance.png" alt="Disturbance rejection response on holdout seed 1000, with the step disturbance active from step 80 through 139."></a></p>
+<p><a href="/assets/controller-search-v1/holdout/trajectories-saturation.png"><img src="/assets/controller-search-v1/holdout/trajectories-saturation.png" alt="Actuator saturation and conditional anti-windup clamping on holdout seed 1000."></a></p>
+<p>These are preregistered examples from one noise seed, not estimates of typical rise time, settling time or overshoot. The nominal live trajectory exceeds the +1 target after the first step, so it does not support a “no overshoot” claim. No settling tolerance was registered; noisy error values cannot substantiate “zero error within eight steps.”</p>
+<p>The saturation figure shows the retained integrator state. Conditional integration blocks updates when the tentative action is outside the actuator limit and the current error would push it further into saturation; it can still integrate while unwinding. Integral clipping also applies to all variants. The saved examples illustrate this rule without proving that it is the sole reason for the search outcome.</p>
+<h2>Evidence, provenance and limits</h2>
+<p>The downloadable <a href="/assets/controller-search-v1/evidence.json">numeric evidence</a> includes frozen controller parameters, method summaries, primary comparisons and the incomplete confirmatory gate. The <a href="/assets/controller-search-v1/holdout-rollouts.csv">1,800 saved holdout rows</a> expose per-seed objective components and safety diagnostics. They are published records, not a new evaluation.</p>
+<p>The <a href="/assets/controller-search-v1/benchmark.json">benchmark configuration</a>, <a href="/assets/controller-search-v1/spec-v1.txt">original specification</a>, <a href="/assets/controller-search-v1/development-comparison-v1.txt">baseline registration</a>, <a href="/assets/controller-search-v1/live-v1.txt">live-proposer registration</a>, <a href="/assets/controller-search-v1/ablations-v1.txt">ablation registration</a> and <a href="/assets/controller-search-v1/holdout-v1.txt">holdout registration</a> preserve the historical rules. Statements of pending work in those registrations describe their pre-execution status.</p>
+<p>Plot data are available for the <a href="/assets/controller-search-v1/development/budget.csv">development budget curves</a>, <a href="/assets/controller-search-v1/holdout/costs.csv">holdout costs</a>, <a href="/assets/controller-search-v1/holdout/bootstrap.csv">bootstrap comparisons</a>, <a href="/assets/controller-search-v1/holdout/anti_windup.csv">anti-windup comparisons</a> and <a href="/assets/controller-search-v1/holdout/trajectories_holdout.csv">example trajectories</a>. Figure exports retain their reviewed numeric data; plot CSVs use display precision, while the numeric evidence and rollout records retain full precision.</p>
+<p>Two clean local checkouts reproduced the mock run and both saved model-response streams, including per-seed trajectory hashes and zero-draw completed resumes, using Node 22.19.0, npm 10.9.3, CPython 3.13.1 and R 4.4.3 on one macOS host. All 13 diagnostic figures reproduced byte-for-byte. The retained records separate historical finish timestamps from unknown starts; no missing runtime was reconstructed. These are local software checks: raw-response replay does not regenerate a model's proposals or estimate its sampling variability. Research source code, raw conversations and checkpoints are not included in this website release, so it is an inspectable results package rather than a complete public reproduction archive.</p>
+<p>Key scientific limitations:</p>
+<ol>
+<li><strong>Inspected holdout split:</strong> Seeds <code>1000..1029</code> count as inspected. Any future hyperparameter or controller tuning must be designated exploratory; rigorous confirmation would require an untouched holdout split under a future benchmark version.</li>
+<li><strong>Single live search repetition (<code>seed 2000</code>):</strong> <code>A-live-proposer</code> was executed once. The crossed bootstrap against <code>B1</code> resamples <code>B1</code> repetitions but repeats the single <code>A-live</code> candidate, thereby omitting <code>A-live</code>'s own search-to-search variance. This evidence supports the effectiveness of the <em>discovered controller</em>, not multi-seed stability of the proposer method in general.</li>
+<li><strong>Budget and provenance:</strong> Twenty candidate evaluations match simulator budgets, not total compute, model calls or elapsed time. Saved live metadata identifies <code>antigravity-subagent</code>, <code>gemini-4-argon-high</code>, and <code>proposer_v1</code>; the historical record reports 19 calls and approximately 17,959 tokens for the history-aware run, with $0 marginal API spend under an included subscription. This review verifies local records, not provider identity or billing.</li>
+<li><strong>Synthetic benchmark boundary:</strong> Performance is synthetic and bounded by the scalar linear plant family.</li>
+</ol>
+<p>The next useful experiment would register multiple independent proposer searches and a new untouched evaluation split. It would test how often the result recurs, before asking whether a more elaborate research procedure helps.</p>
+<aside class="disclosure"><h2>Disclosure</h2><p>Independent synthetic work with no employer code, data or unpublished research. One live search per condition; incomplete confirmatory study. Provider names are historical recorded labels, not independently authenticated identity. This release includes reviewed figures and numeric evidence; raw conversations and research source code are not included.</p></aside></article></main>
+<footer><span>Mu Qiao · PhD</span><span>Research. Build. Reflect.</span><a href="#top">Back to top ↑</a></footer>
+</div></body></html>

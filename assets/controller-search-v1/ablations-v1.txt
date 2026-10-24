@@ -1,0 +1,36 @@
+# Phase 3.5 Preregistration — Focused Ablations (`ablations-v1`)
+
+This document preregisters the Phase 3.5 focused ablations (`ablations-v1`) before executing any ablation run. All ablations operate strictly on the `development` split (`seeds 0..9`, 3 regimes, 30 rollouts per candidate evaluation) under the frozen `synthetic-pid-v1` benchmark (`experiments/configs/synthetic_pid_v1.json`) and never access holdout seeds (`1000..1029`).
+
+## 1. Scientific Questions, Hypotheses, and Rejection Criteria
+
+### Ablation A1 — Proposer Outcome Feedback (`A-live-no-history` vs. `A-live-proposer`)
+
+- **Optimality gap / question:** In Phase 3.4, `A-live-proposer` (`antigravity-subagent` / `gemini-4-argon-high`, repetition `seed 2000`) achieved mean development cost `0.092429429500` after 20 evaluations (`-0.002504279216` vs. `B2-coordinate-search` at `0.094933708716`, and `-0.003089462189` vs. `B1-uniform-random` mean at `0.095518891689`). Because the proposer received both the parametric plant specification (`task`) and iterative development outcome summaries (`history` and `incumbent`), Phase 3.4 alone cannot separate how much of the improvement came from zero-feedback analytical domain knowledge of the plant equations versus closed-loop outcome feedback.
+- **Method (`A-live-no-history`, `seed 2000`):** Run an identically configured, tool-free `live-pid-proposer` subagent on `gemini-4-argon-high` for `seed 2000` (20 candidate evaluations, up to 60 proposal attempts, slot 1 fixed to the reference candidate `(0.5, 0.05, 0.0, true)`), using the identical prompt template (`experiments/prompts/proposer_v1.txt`) and `make_context(task, limits, attempt_index, [])` so that every turn supplies `history: []` and `incumbent: null`. Across the multi-turn conversation, the subagent remembers its own previously proposed parameter vectors without receiving any evaluated `mean_cost` or `unsafe_rate` scores.
+- **Falsifiable hypothesis (`H1_history`):** Closed-loop development outcome feedback improves search over open-loop analytical proposal generation at matched 20-evaluation budget:
+  $$\Delta_{\text{history}} = J_{\text{dev}}(\text{A-live-no-history}, 2000) - J_{\text{dev}}(\text{A-live-proposer}, 2000) > 0.$$
+- **Decomposition:**
+  - **Analytical / prior-knowledge effect vs. `B2`:** $J_{\text{dev}}(\text{B2}, 2000) - J_{\text{dev}}(\text{A-live-no-history}, 2000)$.
+  - **Iterative feedback effect:** $J_{\text{dev}}(\text{A-live-no-history}, 2000) - J_{\text{dev}}(\text{A-live-proposer}, 2000)$.
+- **Rejection criterion:** Reject `H1_history` on `seed 2000` if $J_{\text{dev}}(\text{A-live-no-history}, 2000) \le J_{\text{dev}}(\text{A-live-proposer}, 2000)$ (`0.092429429500`) or if `A-live-no-history` fails to complete 20 valid evaluations within 60 attempts.
+
+### Ablation A2 — Controller Conditional Anti-Windup & Per-Regime Diversity (`anti_windup=false` vs. `anti_windup=true`)
+
+- **Optimality gap / question:** Every winning controller in `B1` (`2000..2009`), `B2` (`2000`), `A-mock` (`2000`), and `A-live-proposer` (`2000`) used `anti_windup = true` (conditional integration `i_t = i_{t-1}` whenever `|u_raw| >= u_max`). How much does conditional anti-windup contribute to overall development cost and to each individual regime (`nominal`, `disturbance-shift`, `saturation-limited`) under matched budgets and matched gain vectors?
+- **Implemented deterministic variants (`seed 2000`):**
+  1. `B0-no-anti-windup` (1 evaluation): Reference gains `(0.5, 0.05, 0.0, false)`.
+  2. `B1-no-anti-windup` (`seed 2000`, 20 evaluations): Slot 1 is `(0.5, 0.05, 0.0, false)`; slots 2..20 evaluate the exact same 19 uniform random `(k_p, k_i, k_d)` draws as `B1-uniform-random` (`seed 2000`), forced to `anti_windup = false`.
+  3. `B2-no-anti-windup` (`seed 2000`, 20 evaluations): Slot 1 is `(0.5, 0.05, 0.0, false)`; slots 2..20 run the deterministic coordinate-search sweep over `(k_p, k_i, k_d)` restricted to `anti_windup = false` (up to 60 attempts, 20 evaluations).
+  4. `A-live-counterfactual-no-anti-windup` (`seed 2000`, 20 evaluations): Evaluates the exact 20 `(k_p, k_i, k_d)` candidate vectors evaluated in `A-live-proposer` (`seed 2000`), each with `anti_windup = false`.
+- **Falsifiable hypothesis (`H2_anti_windup`):** Disabling conditional anti-windup strictly degrades (increases) selected development cost across all four paired comparisons (`B0`, `B1` seed 2000, `B2` seed 2000, and `A-live` counterfactual seed 2000), and the per-regime degradation $\Delta_{\text{aw}}(\text{regime}) = J_{\text{dev}}(\text{no-aw}, \text{regime}) - J_{\text{dev}}(\text{aw}, \text{regime})$ is largest in `saturation-limited` (`u_max = 0.35`), where sustained actuator clipping during the `+1.0` target segment causes severe integral windup before the `t = 100` step change to `-0.5`.
+- **Rejection criterion:** Reject `H2_anti_windup` if any of the four `no-anti-windup` variants achieves a lower or equal selected development cost than its `anti_windup = true` counterpart, or if the `saturation-limited` regime does not exhibit the largest per-regime cost increase for the high-integral search winners (`B2` and `A-live`).
+
+## 2. Explicitly Unrun Variants (Labeled, Never Estimated)
+
+Per `PLAN.md` item `3.5`, unrun variants are explicitly recorded with `status: "not_run"` and `metrics: null`:
+
+- `A-live-proposer` repetitions `2001..2009`: `not_run` (single-seed `2000` budget preregistered in `LIVE_v1.md`).
+- `A-live-no-history` repetitions `2001..2009`: `not_run` (single-seed `2000` budget preregistered here to match `A-live-proposer`).
+- `A-live-no-anti-windup` (live subagent search restricted to `anti_windup = false`): `not_run` (anti-windup effect is isolated deterministically without confounders via `B0-no-anti-windup`, `B1-no-anti-windup`, `B2-no-anti-windup`, and `A-live-counterfactual-no-anti-windup`).
+- `holdout` split (`seeds 1000..1029`) across all methods and ablations: `not_run` (untouched prior to Phase 3.6).
