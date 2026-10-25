@@ -40,6 +40,11 @@
     "url": "https://muqiao0626.github.io/writing/ai-that-actually-works/"
   },
   {
+    "title": "Recursive Self-Improvement: What Does It Actually Mean?",
+    "summary": "What changes when an AI improves itself, and what experiment would show that it becomes better at producing further improvements?",
+    "url": "https://muqiao0626.github.io/writing/recursive-self-improvement-what-does-it-actually-mean/"
+  },
+  {
     "title": "Random, coordinate, and live LLM search at a fixed budget",
     "summary": "A bounded synthetic controller-search study, a promising frozen candidate, and the limits of one live search at a 20-evaluation budget.",
     "url": "https://muqiao0626.github.io/writing/random-and-coordinate-search-development-note/"

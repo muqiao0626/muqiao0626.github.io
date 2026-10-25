@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recursive Self-Improvement: What Does It Actually Mean? — Mu Qiao</title>
+<meta name="description" content="What changes when an AI improves itself, and what experiment would show that it becomes better at producing further improvements?"><meta name="theme-color" content="#f7f5ef">
+<meta property="og:title" content="Recursive Self-Improvement: What Does It Actually Mean? — Mu Qiao"><meta property="og:description" content="What changes when an AI improves itself, and what experiment would show that it becomes better at producing further improvements?">
+<meta property="og:site_name" content="Mu Qiao">
+<meta name="twitter:card" content="summary"><meta name="twitter:title" content="Recursive Self-Improvement: What Does It Actually Mean? — Mu Qiao"><meta name="twitter:description" content="What changes when an AI improves itself, and what experiment would show that it becomes better at producing further improvements?">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://muqiao0626.github.io/writing/recursive-self-improvement-what-does-it-actually-mean/"><meta property="og:url" content="https://muqiao0626.github.io/writing/recursive-self-improvement-what-does-it-actually-mean/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+</head><body id="top"><a class="skip-link" href="#main">Skip to content</a><div class="page">
+<header><a class="wordmark" href="/" aria-label="Mu Qiao, home">mq<span>.</span></a><nav aria-label="Main navigation"><a href="/">Home</a><a href="/research/">Research</a><a href="/writing/" aria-current="page">Writing</a><a href="/projects/">Projects</a><a href="/about/">About</a></nav></header>
+<main id="main" tabindex="-1"><p class="article-series"><a class="text-link" href="/writing/self-improving-ai-lab/">The Self-Improving AI Lab</a></p><section class="page-intro"><p class="eyebrow">essay</p><h1>Recursive Self-Improvement: What Does It Actually Mean?</h1><p class="lead">What changes when an AI improves itself, and what experiment would show that it becomes better at producing further improvements?</p></section><article class="prose"><p class="byline">2026-10-25</p><p><em>What changes when the machinery doing the research becomes the subject of research?</em></p>
+<h2>The interesting part is the recursion</h2>
+<p>Imagine an AI improving a controller by tuning its settings. Then it improves the search procedure that found those settings. Finally, it uses that revised procedure to improve itself again.</p>
+<p>Somewhere in this sequence, the object of research becomes the machinery doing the research. That is the transition I find interesting.</p>
+<p>This thought experiment extends the controller example from my <a href="/writing/can-ai-become-its-own-research-scientist/">first essay</a>: keeping a simulated system close to a target despite noise and disturbances. Here, I want to imagine what happens when the agent begins investigating its own method for finding better controllers.</p>
+<p>But self-reference alone does not tell us whether the loop is becoming more effective. We need to distinguish a system that keeps improving from a system that becomes better at producing improvements.</p>
+<p>The imagined sequence contains both possibilities. The agent might keep finding useful changes with the same research ability. Or something it learns might make it a more capable researcher, able to find changes that its earlier version would have missed. Both would matter. The second is the stronger claim I want to understand.</p>
+<p><strong>My thesis is that demonstrating a recursive improvement loop and demonstrating improvement of the improver require different evidence.</strong> A rising task score tells us something about the successors. To learn whether the researcher itself is getting better at research, we need to compare what successive versions can discover.</p>
+<p>I want to make that comparison precise without assuming that every useful form of self-improvement must satisfy it. The mathematics helps locate the question. The experiments have to answer it.</p>
+<h2>Start with an ordinary update</h2>
+<p>I find it helpful to begin with the least mysterious case: a system gets better at a task. Let <code>S</code> denote the system and <code>D</code> a specified distribution of tasks. We can describe its capability by an expected score:</p>
+<pre><code class="language-text">C_D(S) = E[score(S, x)],    x drawn from D
+</code></pre>
+<p>The expectation includes randomness in the system and evaluation. I will take higher scores to mean better performance and hold the execution conditions fixed: tools, inference budget, time limits, and scoring rules. Giving one version an extra hour would answer a different question from improving what it can do in the same hour.</p>
+<p>An update procedure <code>U</code> uses observations <code>R_t</code> to produce a successor:</p>
+<pre><code class="language-text">S_(t+1) = U(S_t, R_t)
+</code></pre>
+<p>If independently evaluated capability increases, then:</p>
+<pre><code class="language-text">C_D(S_(t+1)) &gt; C_D(S_t)
+</code></pre>
+<p>That is improvement on <code>D</code>. But the inequality leaves out the part I am most curious about: where did the improvement come from?</p>
+<p>A human may have rewritten the prompt. A fixed optimizer may have changed the weights. A search routine may have tested thousands of controller settings and retained the best. These mechanisms can produce substantial progress while leaving the procedure responsible for progress unchanged.</p>
+<p>This is why I hesitate to read too much into an upward search curve. If a procedure always retains the highest observed score, its best-so-far score cannot decrease. The curve can rise even when the procedure learns nothing about how to search. With noisy measurements, some of that rise may reflect increasingly lucky observations.</p>
+<h2>When the improver becomes its own target</h2>
+<p>Now suppose <code>S</code> can perform research on another computational system <code>X</code>. It can inspect the target, propose a modification, run experiments, and return a revised target. Write this operation as:</p>
+<pre><code class="language-text">I_S(X; B) → X′
+</code></pre>
+<p>Here, <code>I_S</code> is the improvement procedure executed by system <code>S</code>, and <code>B</code> specifies the research budget. The notation distinguishes the <strong>improver</strong> from the <strong>object being improved</strong>.</p>
+<p>An agent tuning a controller fits this description. The controller, including its settings, is <code>X</code>; the agent that proposes and tests changes is <code>S</code>. A controller that tracks its target more accurately at the same action cost is a useful result. It does not establish that the agent has improved itself.</p>
+<p>Self-modification makes the system its own target:</p>
+<pre><code class="language-text">S_(t+1) = I_(S_t)(S_t; B_t)
+</code></pre>
+<p>The successor might retain new prompts, a different search strategy, revised memory, or new model parameters. If it then takes over the improvement role, the lineage becomes:</p>
+<pre><code class="language-text">S_0 --using I_(S_0)--&gt; S_1 --using I_(S_1)--&gt; S_2 → …
+</code></pre>
+<p>This gives us the recursive structure: the system produced by one step participates in producing the next. But the structure leaves a more interesting question open: <strong>does the successor become better at producing useful improvements?</strong></p>
+<p>To answer that, we first need to decide what belongs inside the system.</p>
+<h2>What counts as the self?</h2>
+<p>I find the boundary of the “self” surprisingly consequential. If an agent rewrites the search procedure that determines its next experiment, something important has changed, even if every neural-network weight stays fixed. For an agent, I would start with a broader description:</p>
+<pre><code class="language-text">S = (θ, P, M, T, A)
+
+θ: model parameters       P: prompts and instructions
+M: retained memory        T: available tools
+A: code coordinating reasoning, search, and learning
+</code></pre>
+<p>The components interact. A prompt may specify an algorithm; memory may contain executable procedures; coordination code may determine which model is called and what evidence it receives. The tuple is a way to keep track of these dependencies.</p>
+<p>The evaluator and experimental environment must also be specified. Some evaluation routines may belong to the agent's tools. An independent final assessment should remain outside the changes whose benefit it measures.</p>
+<p>Under this broader boundary, an agent can change persistently without updating its model weights. Replacing an ineffective search policy can alter what it discovers with the same model and budget. Conversely, changing millions of weights does not automatically show improvement in the process of learning.</p>
+<p>Before testing, I would draw the boundary around the state and procedures we intend to compare. What survives a restart? What can the agent change? What does it still need from us? Those questions tell me more about the “self” than the location of its neural-network weights alone.</p>
+<h2>Four ways a system can change</h2>
+<p>With that boundary in mind, I see four useful kinds of change. They overlap, but following what each one carries forward helps explain why the same word, “improvement,” can mean quite different things.</p>
+<h3>1. Self-correction: the output changes</h3>
+<p>A model writes an answer, critiques it, and tries again. What changes is the answer in front of us.</p>
+<p>Self-Refine implements this pattern using a language model for generation, feedback, and refinement, without additional training. <a href="https://arxiv.org/abs/2303.17651">Madaan et al., <em>Self-Refine</em></a>.</p>
+<p>The revised answer may be better. If neither the answer nor a learned lesson carries forward, however, a fresh task starts with the same system. This is useful computation within an attempt. Persistence requires an additional mechanism.</p>
+<h3>2. Persistent adaptation: retained state changes</h3>
+<p>Now let a lesson survive the attempt that produced it. The next decision begins with something the previous decision did not know.</p>
+<p>Reflexion uses textual reflections stored in episodic memory to guide subsequent attempts without changing model weights. <a href="https://arxiv.org/abs/2303.11366">Shinn et al., <em>Reflexion</em></a>.</p>
+<p>That changes what future decisions can use. A retained lesson might be a task-specific fact or a reusable method for designing experiments. I would want to know whether the lesson helps on the next unfamiliar problem. Its location in a memory buffer tells us little about how general or useful it is.</p>
+<h3>3. Policy learning: the behavior-generating model changes</h3>
+<p>A training procedure may update parameters using experience produced by the current policy:</p>
+<pre><code class="language-text">experience_t ~ policy(θ_t)
+θ_(t+1) = U(θ_t, experience_t)
+</code></pre>
+<p>AlphaZero learns through self-play, creating a feedback relationship between its current policy and subsequent learning. <a href="https://arxiv.org/abs/1712.01815">Silver et al., <em>Mastering Chess and Shogi by Self-Play</em></a>.</p>
+<p>A fixed learning algorithm does not eliminate this feedback. It does mean we should distinguish learning a stronger policy from discovering a stronger learning algorithm. Neither result should be silently substituted for the other.</p>
+<h3>4. Modification of the improvement procedure</h3>
+<p>The target can include the machinery that proposes and evaluates changes: search code, context management, experiment selection, training methods, or rules for retaining evidence.</p>
+<p>This is where the controller example turns inward. The agent is investigating how it investigates. Does the new procedure help it find a better controller, a better researcher, or both?</p>
+<p>Direct source-code access is one route, not a necessary condition. A learned policy or retained strategy could change the effective improvement procedure too. What matters is its role in the next round of research.</p>
+<h2>What would convince me that the improver improved?</h2>
+<p>I want to be able to write <code>I_(t+1) &gt; I_t</code>. But what would that inequality mean? One procedure might make quick and modest gains, and another might spend most of its budget investigating a change that eventually pays off. We need a common problem before we can compare them.</p>
+<p>Let <code>G</code> be a declared distribution of starting agent systems <code>X</code>. Let <code>D</code> define the downstream tasks on which those agents are assessed. For a fixed research budget <code>B</code>, define:</p>
+<pre><code class="language-text">Q(S; G, D, B) = E[C_D(I_S(X; B)) − C_D(X)],    X drawn from G
+</code></pre>
+<p><code>Q</code> measures expected improvement in a target agent after <code>S</code> spends the allotted research budget. The expectation includes variation across starting targets and independent research runs. Each target is scored under the same downstream execution conditions before and after modification.</p>
+<p>I propose <code>Q</code> as one way to make the comparison testable. Estimating it would require agreed rules for failed runs, valid modifications, task weighting, and scoring. The improver would receive development feedback; final evaluation outcomes would be reserved for estimating <code>Q</code>.</p>
+<p>The strong comparison is then:</p>
+<pre><code class="language-text">ΔQ = Q(S_(t+1); G, D, B) − Q(S_t; G, D, B)
+</code></pre>
+<p>A reliably positive <code>ΔQ</code> would support the stronger claim: the successor is better at producing improvements on these targets at this budget. A productive recursive lineage could still exist without passing this particular comparison. The system might keep finding useful revisions to itself while showing no broader advantage as an improver on <code>G</code>. I would describe those as different findings, rather than forcing both into a yes-or-no verdict about RSI.</p>
+<p>The common starting targets are doing important work here. If each version improves only itself, the newer one may face a harder problem: the easy gains have already been taken. Returning both researchers to the same starting problem lets us ask whether the difference lies in the researcher or in the opportunity it was given.</p>
+<p>Suppose a revised agent learns to distinguish controller failures caused by delayed feedback from those caused by action limits, and uses that distinction to choose more informative experiments. To test its ability to improve researchers, I would give the original and revised versions the same starting controller-search agents to modify, with the same research allowance. I would then test the resulting agents on fresh simulated control tasks, giving each the same search budget. Their score could be the negative of the cost of the controllers they discover, so lower control cost means higher capability. If the revised improver repeatedly produces more effective search agents, we have evidence for an improvement in its research ability. Finding one better controller would answer a narrower question.</p>
+<p>The comparison should also distinguish a better method from a larger stock of prior solutions. One experiment could compare complete retained systems; another could give both access to the same archive and vary only the search procedure. These answer different questions. Erasing all memory indiscriminately would be as misleading as ignoring unequal information.</p>
+<p>The budget is part of the question, too. <code>Q</code> measures gain after a specified allowance. It does not describe speed or efficiency at every allowance. A revised agent might lose at a small budget and win at a larger one. I would therefore be interested in the whole relationship between budget and gain. Equal numbers of candidate evaluations alone do not equalize tokens, runtime, or human effort, and the cost of discovering the revised agent should remain visible alongside the cost of using it.</p>
+<p>Even a positive <code>ΔQ</code> leaves me wanting to see the next generation. Does the advantage survive when the successor takes over? I would run a parallel lineage that keeps the original improver fixed, starting from the same target with comparable total resources. That comparison asks whether changing the researcher helps the longer process, beyond what the original researcher could have achieved by continuing to work.</p>
+<h2>Where I see these questions in existing research</h2>
+<p>The Self-Taught Optimizer, or STOP, directly targets an improvement program. A language-model-based improver is given its own code to improve; the resulting improvers generate better programs on a small downstream task set. The paper appeared at COLM 2024. Its authors qualify the result as less than full recursive self-improvement because the underlying language model is unchanged. <a href="https://arxiv.org/abs/2310.02304">Zelikman et al., <em>STOP</em></a>.</p>
+<p>What interests me is the self-reference in the program: the code organizing calls to the model becomes a target of those calls. That gives us a specific mechanism to investigate, even while the model remains fixed.</p>
+<p>Gödel Agent allows an agent to modify its own logic and behavior, including its improvement routine. The ACL 2025 paper reports experiments across multiple domains. Its relevance here is the expanded scope of editable procedures; that design choice must still be distinguished from the measured effectiveness of the resulting revisions. <a href="https://aclanthology.org/2025.acl-long.1354/">Yin et al., <em>Gödel Agent</em></a>.</p>
+<p>The September 2026 AIDE² preprint makes the distinction especially concrete. It reports seven accepted changes in an eight-day run and evaluates gains on four external benchmarks. In the main run, however, a fixed outer agent rewrites an inner research agent. The accepted successor becomes the next target of editing, not automatically the next outer improver. <a href="https://arxiv.org/html/2609.26457v1">Srikanth et al., <em>Recursive self-improvement of AI research agents</em>, v1</a>.</p>
+<p>The authors call this recursive self-improvement. But under the narrower definition I am using, I would describe the main run as automated improvement of a research agent, namely, the target changes while its researcher stays fixed, and the recursive loop closes when the successor takes over that research role.</p>
+<p>The authors separately compare a discovered agent with a human-engineered reference in the outer role. Each arm starts from the same inner agent and runs three independent repetitions. They describe this “ignition test” as inconclusive: it does not establish that the discovered agent is the better self-improver.</p>
+<p>I find this separation revealing. A study can improve the researcher and still leave open whether that researcher is better at improving researchers. The inconclusive comparison identifies the next question rather than erasing the earlier result.</p>
+<h2>The evaluator becomes part of the story</h2>
+<p>The more I follow this argument, the more I return to evaluation. Searching for better agents introduces another level at which a system can learn the peculiarities of its tests.</p>
+<pre><code class="language-text">Task level:      agent proposes a solution → solution is scored
+Research level:  improver proposes an agent → agent is scored
+</code></pre>
+<p>A test set may be hidden from the task-solving agent while its aggregated scores repeatedly guide the outer improver. Those scores are then development feedback at the research level. Hiding labels from the inner agent does not make the outer selection process independent of the evaluation.</p>
+<p>Cawley and Talbot analyze how optimizing a finite-sample model-selection criterion can overfit that criterion and bias performance estimates. Applying that concern to agent selection motivates a separate final assessment of the improvement process. <a href="https://www.jmlr.org/papers/v11/cawley10a.html">Cawley and Talbot, <em>On Over-fitting in Model Selection and Subsequent Selection Bias in Performance Evaluation</em></a>.</p>
+<p>For a comparison of improvers, I would freeze both versions before examining final outcomes, repeat independent search runs, and report uncertainty over runs and targets. Hundreds of task scores produced by one successful research run are not hundreds of independent demonstrations of that research method.</p>
+<p>If a revision helps, I would want to take it apart. Does restoring the old search policy remove the gain? What happens without the new failure memory? These comparisons move us from observing a useful revision toward understanding it, although interacting changes may resist a single explanation.</p>
+<p>Evaluation code can itself contain errors, so it need not be immutable forever. But an agent's proposed evaluator repair should be checked independently and applied consistently to both versions. Otherwise, changing the measurement can masquerade as changing capability.</p>
+<p>There is a practical consequence for a long-running loop: once a final assessment guides the next redesign, it has become development material. We need fresh evaluation to confirm the next claim. Otherwise, a system could become increasingly adapted to the history of our tests while appearing to become a more general researcher.</p>
+<h2>Recursive does not mean runaway</h2>
+<p>It is easy to imagine the next step: a better researcher produces an even better researcher, and improvement accelerates. I understand the attraction of that picture. But the recursive relationship alone does not determine the growth curve.</p>
+<p>Suppose <code>C_t</code> is capability measured consistently across generations and:</p>
+<pre><code class="language-text">ΔC_t = C_(t+1) − C_t
+</code></pre>
+<p>Positive increments indicate improvement. Increasing increments indicate acceleration per generation on that chosen scale. Neither statement alone establishes acceleration per day, because generation durations may change.</p>
+<p>A process with increments <code>1, 1/2, 1/4, …</code> improves at every step while its total additional gain approaches 2. A process with increments <code>1, 1/2, 1/3, …</code> also has diminishing gains, but its sum is unbounded. Decreasing increments alone therefore do not prove convergence. These sequences illustrate logical possibilities; neither is a forecast for AI.</p>
+<p>The possibility I find more subtle is that the procedure improves while its visible gains shrink. Consider a simple model:</p>
+<pre><code class="language-text">C_(t+1) = C_t + g_t(C_max − C_t)
+0 &lt; g_t ≤ 1,    C_0 ≤ C_max
+</code></pre>
+<p>Here, <code>g_t</code> is the fraction of the remaining gap closed in one generation, and <code>C_max</code> is an assumed ceiling for the specified task and environment. A better improvement process could increase <code>g_t</code> while the remaining gap shrinks. For example, a generation with <code>g_t = 0.8</code> closes 80% of the initial gap. If the next generation improves to <code>g_(t+1) = 0.9</code>, it closes 90% of the remaining 20%, or 18% of the initial gap. The fraction recovered improves while the absolute gain falls. Under the model's assumptions, capability stays bounded by <code>C_max</code>.</p>
+<p>The ceiling is an assumption of this toy model, not a claim about intelligence as a whole. What I take from it is the importance of the remaining opportunity. A more effective researcher may be working on a much harder frontier.</p>
+<p>A system may improve search until evaluation becomes the bottleneck. Better evaluation may require more compute. A new training method may need unavailable data or hardware. Sustained progress requires identifying and overcoming changing constraints, which is itself a research problem.</p>
+<p>Claims of recursive structure, beneficial feedback, acceleration, and unbounded growth therefore require different evidence. Even acceleration depends on the capability scale chosen; transforming a score can change the apparent curvature of a trajectory.</p>
+<h2>How much of the loop is actually closed?</h2>
+<p>Suppose an AI proposes a better architecture, humans train it, and the resulting model replaces the original researcher. The AI contributed to its successor, but human work was essential to the transition.</p>
+<p>I would still count that as an important contribution. I would also want to understand what the humans supplied. Did they execute an experiment the agent had fully specified, or recognize the central idea and turn it into a workable research plan?</p>
+<p>I would record who proposes the modification, implements it, designs the experiment, interprets the evidence, and approves adoption. A human safety or release gate is different from a human inventing each research step. Autonomy is better described by that record than by a single label.</p>
+<p>Similarly, an open-ended modification space is not necessary for every recursive benefit. An agent might improve its own experiment-selection policy within a bounded family. That would be a limited but meaningful result if the policy helps generate further useful revisions. An unrestricted ability to rewrite code offers a broader search space; it offers no guarantee of better research.</p>
+<p>My own <a href="/writing/random-and-coordinate-search-development-note/">synthetic controller-search study</a> addresses an earlier link in this chain. Its target is controller settings within a fixed research procedure. It does not measure successive versions of that procedure as improvers. Its evidence must be interpreted at that level.</p>
+<h2>The question I want to keep asking</h2>
+<p>After following these distinctions, I would use a deliberately scoped definition:</p>
+<blockquote>
+<p><strong>Recursive self-improvement is a persistent process in which an AI system helps produce an improved successor, and that successor participates in producing further successors. Improvement of the improver is a stronger claim: retained changes make the system more effective at generating future improvements.</strong></p>
+</blockquote>
+<p>The first claim needs a record of genuine improvement and of who produced each successor. A recurrence in code is only the structure of an attempt. The stronger claim asks what changes when we put successive versions in the researcher’s role. Neither requires every proposal or every generation to succeed.</p>
+<p>For that stronger claim, I would want to follow the evidence through three steps: a traceable lineage, a controlled comparison of the versions as improvers, and a continued run testing whether replacing the researcher helps. The common-target measure <code>Q</code> gives the middle step a concrete form. It is a test of a specified capacity for improvement, rather than a definition of every possible recursive process.</p>
+<p>Transfer to new task families, lower human involvement, and sustained gains would strengthen the claim and broaden its scope. None should be inferred from an upward curve on the selection benchmark alone.</p>
+<p>The question I want to follow is therefore more specific than whether RSI has “arrived”: <strong>which part of the improvement process changed, what did that change enable the successor to discover, and does the advantage survive the next round?</strong></p>
+<p>I return to the controller example with a different question now. We can measure whether the controller tracks its target better. Establishing a better search procedure takes another comparison. The researcher that can keep improving that procedure is harder still to establish.</p>
+<p>That is what draws me to this subject. If AI can investigate its own way of investigating, we can begin to ask how a research process learns. I would like to see that possibility tested one generation at a time, with enough detail to understand both the improvements and the failures.</p>
+<aside class="disclosure"><h2>Disclosure</h2><p>Conceptual essay. Primary sources checked on 2026-10-24. The framework and proposed comparison are the author&#39;s interpretation; no new experiment or claim of demonstrated recursive self-improvement is made.</p></aside><h2>Sources</h2><ul><li><a href="https://arxiv.org/abs/2303.17651">Madaan et al. — Self-Refine: Iterative Refinement with Self-Feedback (2023)</a></li><li><a href="https://arxiv.org/abs/2303.11366">Shinn et al. — Reflexion: Language Agents with Verbal Reinforcement Learning (2023)</a></li><li><a href="https://arxiv.org/abs/1712.01815">Silver et al. — Mastering Chess and Shogi by Self-Play with a General Reinforcement Learning Algorithm (2017 preprint)</a></li><li><a href="https://arxiv.org/abs/2310.02304">Zelikman et al. — Self-Taught Optimizer (STOP): Recursively Self-Improving Code Generation (COLM 2024)</a></li><li><a href="https://aclanthology.org/2025.acl-long.1354/">Yin et al. — Gödel Agent: A Self-Referential Agent Framework for Recursively Self-Improvement (ACL 2025)</a></li><li><a href="https://arxiv.org/html/2609.26457v1">Srikanth et al. — Recursive self-improvement of AI research agents (September 2026 preprint, v1)</a></li><li><a href="https://www.jmlr.org/papers/v11/cawley10a.html">Cawley and Talbot — On Over-fitting in Model Selection and Subsequent Selection Bias in Performance Evaluation (JMLR, 2010)</a></li></ul></article></main>
+<footer><span>Mu Qiao · PhD</span><span>Research. Build. Reflect.</span><a href="#top">Back to top ↑</a></footer>
+</div></body></html>
