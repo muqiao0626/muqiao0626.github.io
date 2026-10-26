@@ -1,0 +1,104 @@
+# Multi-Seed Live LLM Proposer Search Protocol (`MULTI_PROPOSER_v1.md`)
+
+**Study ID:** `multi-proposer-v1`  
+**Benchmark ID:** `synthetic-pid-v2`  
+**Status:** Preregistered prior to executing any v2 search or simulation.
+
+---
+
+## 1. Scientific Context, Gap, and Question
+
+In `synthetic-pid-v1`, an opt-in live LLM proposer (`A-live-proposer`, Gemini 4 Argon High) was executed on a single repetition (`seed 2000`). It selected a controller (`kp=1.978644, ki=0.5, kd=0.0, anti_windup=true`) that achieved development cost `0.092429` and holdout cost `0.092063` (seeds `1000..1029`), outperforming `B0-fixed` (`0.172563`), `B2-coordinate-search` (`0.094360`), and the 10-repetition `B1-uniform-random` mean (`0.094983`) with zero holdout degradation and zero safety violations.
+
+However, scientific validity was explicitly constrained by three factors:
+1. **Single Live Search Repetition:** Because only `seed 2000` was run, the 10-repetition confirmatory gate of `SPEC_v1.md` §7 was recorded as `inconclusive-incomplete-search-repetitions`.
+2. **Omitted Live Search Variance:** The paired crossed bootstrap against B1 repeated the single `A-live` candidate across repetition resamples, thereby understating uncertainty by omitting the proposer's own search-to-search variance ($s_{\text{search}}$).
+3. **Inspected Holdout Split:** Seeds `1000..1029` have been inspected and can no longer serve as an untouched confirmatory holdout split.
+
+### The Research Question
+Under the identical 20-candidate evaluation budget and closed-loop development context, does a blinded live LLM proposer (`A-live-proposer`, Gemini 4 Argon High) consistently outperform budget-matched random search (`B1`) and coordinate search (`B2`) across **multiple independent search repetitions** ($R \ge 5$), when evaluated on a fresh development split and an untouched holdout split with full search-to-search variance accounted for?
+
+---
+
+## 2. Refreshed Benchmark Specification (`synthetic-pid-v2`)
+
+To preserve strict holdout integrity, all seed sets are refreshed and disjoint:
+
+| Seed Set | Count | Seed Range / Values | Purpose |
+|---|---:|---|---|
+| **Development seeds** | 10 | `[100, 101, 102, 103, 104, 105, 106, 107, 108, 109]` | 30 development rollouts per candidate during search |
+| **Holdout seeds** | 30 | `[5000, 5001, ..., 5029]` | One-shot final holdout evaluation (90 rollouts per winner) |
+| **Search repetitions** | 5 | `[2100, 2101, 2102, 2103, 2104]` | Independent search seeds (extendable to $R=10$ with `2105..2109`) |
+| **Unit test seeds** | 10 | `[3100, 3101, ..., 3109]` | Reserved for software unit tests; zero noise leakage |
+| **Bootstrap seed** | 1 | `[4100]` | 10,000 crossed paired bootstrap replicates |
+
+All physical plant dynamics, disturbance profiles, and controller constraints remain identical to v1:
+- **Nominal:** $a=0.9, b=0.2, \sigma=0.02, u_{\max}=2.0, x_{\text{limit}}=2.5$.
+- **Disturbance-shift:** $a=0.9, b=0.2, \sigma=0.02, u_{\max}=2.0$, load disturbance $w=0.15$ active during $t \in [80, 140)$.
+- **Saturation-limited:** $a=0.95, b=0.1, \sigma=0.02, u_{\max}=0.35, x_{\text{limit}}=2.5$.
+- **Controller family:** $k_p \in [0, 2], k_i \in [0, 0.5], k_d \in [0, 0.5]$ (6 decimal places), Boolean `anti_windup`, $I_{\max}=10$.
+- **Objective:** $\text{MSE}_{\text{tracking}} + 0.01 \cdot \text{effort} + 0.05 \cdot \text{slew} + 10 \cdot \text{unsafe\_fraction}$.
+- **Evaluation budget:** 20 unique evaluated candidates per repetition (including reference controller $k_p=0.5, k_i=0.05, k_d=0, \text{aw}=\text{true}$ as slot 1); maximum 60 proposal attempts.
+
+---
+
+## 3. Falsifiable Hypotheses and Rejection Criteria
+
+Let $J_m[r, s]$ denote the holdout cost of method $m \in \{A, B1, B2\}$ on search repetition $r \in \{2100, \dots, 2104\}$ and holdout seed $s \in \{5000, \dots, 5029\}$.
+
+### Hypothesis 1: Multi-Seed Superiority over B1-uniform-random
+- **Falsifiable claim:** The mean holdout cost of $A$ across the $R$ independent repetitions is strictly lower than that of $B1$, with the two-sided 97.5% Bonferroni crossed bootstrap confidence interval strictly negative:
+  $$\text{Upper}_{97.5\%}\Big(\bar{D}^{*}_{A - B1}\Big) < 0$$
+  where $\bar{D}^*$ resamples both repetition slots $i \in \{0, \dots, R-1\}$ and holdout seed blocks $j \in \{0, \dots, 29\}$.
+- **Rejection criterion:** If $\text{Upper}_{97.5\%} \ge 0$, H1 is rejected as not significantly superior at matched budget.
+
+### Hypothesis 2: Multi-Seed Superiority over B2-coordinate-search
+- **Falsifiable claim:** The mean holdout cost of $A$ across the $R$ repetitions is strictly lower than $B2$:
+  $$\text{Upper}_{97.5\%}\Big(\bar{D}^{*}_{A - B2}\Big) < 0$$
+- **Rejection criterion:** If $\text{Upper}_{97.5\%} \ge 0$, H2 is rejected.
+
+### Hypothesis 3: Search Variance and Stability
+- **Falsifiable claim:** The search-to-search sample standard deviation of $A$ across independent repetitions is bounded and does not exceed that of uniform random search:
+  $$s_{\text{search}}(A) \le s_{\text{search}}(B1)$$
+  demonstrating that the LLM proposer is a reliable search procedure rather than an erratic lottery.
+
+### Hypothesis 4: Safety Invariance
+- **Falsifiable claim:** Mean unsafe rate across all proposed candidates and all rollouts is strictly zero ($0.0$), with zero terminal violations.
+
+---
+
+## 4. Staged Quota Execution Architecture
+
+Because Gemini 4 Argon High API quota refreshes periodically, the execution framework is engineered for **repetition-by-repetition staged execution**:
+
+```
+[Phase 2.1: Register v2 Protocol] (Complete)
+       │
+       ▼
+[Phase 2.2: Compute Baselines on v2 Split] (Offline simulation, 0 API calls)
+       ├── B0-fixed (1 evaluation, 30 dev rollouts)
+       ├── B1-uniform-random (5 repetitions, 2100..2104, 3000 dev rollouts)
+       └── B2-coordinate-search (5 repetitions, deterministic path check)
+       │
+       ▼
+[Phase 2.3: Staged Live Proposer Searches] (1 repetition per quota refresh window)
+       ├── Seed 2100: Blinded subagent session -> checkpoint -> replay verification
+       ├── Seed 2101: Blinded subagent session -> checkpoint -> replay verification
+       ├── Seed 2102: Blinded subagent session -> checkpoint -> replay verification
+       ├── Seed 2103: Blinded subagent session -> checkpoint -> replay verification
+       └── Seed 2104: Blinded subagent session -> checkpoint -> replay verification
+       │
+       ▼
+[Phase 2.4: Multi-Seed Development Analysis & Crossed Bootstrap]
+       │
+       ▼
+[Phase 2.5: One-Shot Holdout Evaluation (Seeds 5000..5029)]
+       ├── Evaluate all frozen winners on v2 holdout split
+       ├── Compute full crossed paired bootstrap CIs
+       └── Render diagnostic figures & update publication draft
+```
+
+Each live repetition is isolated:
+- Dedicated subagent conversation ID with empty conversation memory.
+- Atomic checkpointing (`checkpoint.json`) and raw response capture (`raw_responses.jsonl`).
+- Deterministic offline replay verification (`--mode replay`) ensuring byte-for-byte reproducibility before declaring a repetition complete.

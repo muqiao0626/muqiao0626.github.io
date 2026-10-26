@@ -40,6 +40,11 @@
     "url": "https://muqiao0626.github.io/writing/ai-that-actually-works/"
   },
   {
+    "title": "Does the controller-search result repeat across five runs?",
+    "summary": "Five fresh LLM-guided searches found lower-cost controllers than the registered random and coordinate baselines on held-out noise cases. The result strengthens a narrow claim, with important limits.",
+    "url": "https://muqiao0626.github.io/writing/multi-seed-llm-proposer-replication-note/"
+  },
+  {
     "title": "Recursive Self-Improvement: What Does It Actually Mean?",
     "summary": "What changes when an AI improves itself, and what experiment would show that it becomes better at producing further improvements?",
     "url": "https://muqiao0626.github.io/writing/recursive-self-improvement-what-does-it-actually-mean/"
@@ -61,7 +66,7 @@
   },
   {
     "title": "Synthetic controller search",
-    "summary": "A completed exploratory comparison of bounded controller searches at 20 evaluations, with frozen-candidate results and explicit limits from one live search.",
+    "summary": "Bounded controller search at 20 evaluations: an initial exploratory study and a five-search replication on fresh noise cases.",
     "url": "https://muqiao0626.github.io/projects/synthetic-controller-search/"
   }
 ]

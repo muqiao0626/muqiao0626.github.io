@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Does the controller-search result repeat across five runs? — Mu Qiao</title>
+<meta name="description" content="Five fresh LLM-guided searches found lower-cost controllers than the registered random and coordinate baselines on held-out noise cases. The result strengthens a narrow claim, with important limits."><meta name="theme-color" content="#f7f5ef">
+<meta property="og:title" content="Does the controller-search result repeat across five runs? — Mu Qiao"><meta property="og:description" content="Five fresh LLM-guided searches found lower-cost controllers than the registered random and coordinate baselines on held-out noise cases. The result strengthens a narrow claim, with important limits.">
+<meta property="og:site_name" content="Mu Qiao">
+<meta name="twitter:card" content="summary"><meta name="twitter:title" content="Does the controller-search result repeat across five runs? — Mu Qiao"><meta name="twitter:description" content="Five fresh LLM-guided searches found lower-cost controllers than the registered random and coordinate baselines on held-out noise cases. The result strengthens a narrow claim, with important limits.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://muqiao0626.github.io/writing/multi-seed-llm-proposer-replication-note/"><meta property="og:url" content="https://muqiao0626.github.io/writing/multi-seed-llm-proposer-replication-note/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+</head><body id="top"><a class="skip-link" href="#main">Skip to content</a><div class="page">
+<header><a class="wordmark" href="/" aria-label="Mu Qiao, home">mq<span>.</span></a><nav aria-label="Main navigation"><a href="/">Home</a><a href="/research/">Research</a><a href="/writing/" aria-current="page">Writing</a><a href="/projects/">Projects</a><a href="/about/">About</a></nav></header>
+<main id="main" tabindex="-1"><p class="article-series"><a class="text-link" href="/writing/self-improving-ai-lab/">The Self-Improving AI Lab</a></p><section class="page-intro"><p class="eyebrow">essay</p><h1>Does the controller-search result repeat across five runs?</h1><p class="lead">Five fresh LLM-guided searches found lower-cost controllers than the registered random and coordinate baselines on held-out noise cases. The result strengthens a narrow claim, with important limits.</p></section><article class="prose"><p class="byline">2026-10-26 · Updated 2026-10-26</p><h2>From one promising search to five</h2>
+<p>The <a href="/writing/random-and-coordinate-search-development-note/">first controller-search study</a> produced a promising result: a language model found a controller that scored better than the registered random and coordinate-search baselines. But only one live model search had been run. That left an important question unanswered: would fresh searches find similarly good controllers, or had one conversation been unusually fortunate?</p>
+<p>This follow-up repeats the search five times under a preregistered protocol. It uses fresh development and holdout noise seeds while keeping the synthetic system, controller bounds, scoring rule, and 20-evaluation budget fixed.</p>
+<p>All five LLM-guided searches selected controllers that outperformed every selected random-search controller and the coordinate-search controller on the new holdout cases. The mean holdout cost was <code>0.093603</code>, compared with <code>0.095798</code> for random search and <code>0.096173</code> for coordinate search. Lower cost is better. Those differences correspond to reductions of 2.29% and 2.67%, respectively.</p>
+<p>This is stronger evidence than a single successful search. It remains evidence about one fixed search procedure on a small synthetic control problem, rather than a general claim that an LLM is a better optimizer or that a research system has improved itself.</p>
+<h2>What stayed fixed, and what changed</h2>
+<p>The task is to tune a proportional-integral-derivative (PID) controller. Its three gains determine how strongly it responds to the current tracking error, accumulated error, and changes in error. A fourth setting enables conditional anti-windup, which prevents the integral term from growing in a direction that would worsen actuator saturation while still permitting it to unwind.</p>
+<p>Candidates are evaluated in three operating regimes: nominal conditions, a temporary disturbance, and a regime with a restrictive actuator limit. The score combines tracking error, control effort, changes in control input, and a penalty for unsafe states. The allowed gains, objective weights, and safety threshold were unchanged from the first study.</p>
+<p>Each search receives 20 candidate evaluations, including the same fixed reference controller as its first evaluation. The model proposes the remaining candidates using the task description, controller bounds, scoring rule, and development feedback. Random search samples from the registered parameter ranges. Coordinate search follows a fixed rule for testing changes along individual parameter directions. The budget matches candidate evaluations, not inference effort, elapsed time, or prior knowledge.</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Cases used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Development feedback</td>
+<td>10 noise seeds, <code>100..109</code>, across three regimes: 30 trials per candidate</td>
+</tr>
+<tr>
+<td>Final holdout evaluation</td>
+<td>30 noise seeds, <code>5000..5029</code>, across three regimes: 90 trials per frozen winner</td>
+</tr>
+<tr>
+<td>Search repetitions</td>
+<td>Five registered repetition identifiers, <code>2100..2104</code></td>
+</tr>
+</tbody>
+</table>
+<p>The recorded procedure used five separately initialized model conversations with the same instructions and no shared search history. Within a search, the proposer received recent development results and the best controller found so far. It received no holdout outcomes. The recorded model label was <code>gemini-4-argon-high</code>; these records do not independently authenticate the provider identity or platform isolation settings.</p>
+<p>The new noise seeds are disjoint from those in the first study. They provide fresh evaluation cases within the same task. They do not erase what was learned when designing this follow-up, and they do not introduce a new family of control problems.</p>
+<p>Coordinate search was executed five times but followed exactly one deterministic path. It therefore contributes one effective search outcome, not five independent discoveries.</p>
+<h2>What the searches found</h2>
+<p><img src="/assets/multi-proposer-v1/budget.png" alt="Best-so-far development cost over 20 evaluations. Thin lines show the five model and five random searches; coordinate search follows one deterministic path."></p>
+<p><em>These curves use development results only. Repeated coordinate-search executions overlap exactly.</em></p>
+<p>The model searches improved quickly. By five evaluations, their mean best development cost was <code>0.094190</code>, compared with <code>0.103977</code> for random search and <code>0.122921</code> for coordinate search. At the full budget, the corresponding values were <code>0.094071</code>, <code>0.096065</code>, and <code>0.096354</code>.</p>
+<p>All five model searches selected the maximum allowed proportional and integral gains, <code>2.0</code> and <code>0.5</code>, with anti-windup enabled. Their chosen derivative gains formed two small groups: three searches selected values near <code>0.01113</code>, and two selected values near <code>0.02348</code>. Two searches chose exactly the same controller, leaving four distinct model-selected controllers across the five repetitions.</p>
+<p>The saved proposals show where these searches concentrated their evaluations. They do not establish a global optimum, map the full objective surface, or isolate why the chosen settings worked well.</p>
+<h2>The frozen winners on fresh noise cases</h2>
+<p>After selection on development cases, the winners were frozen and evaluated on the registered holdout cases.</p>
+<table>
+<thead>
+<tr>
+<th>Search method</th>
+<th class="align-right">Effective search paths</th>
+<th class="align-right">Mean development cost</th>
+<th class="align-right">Mean holdout cost</th>
+<th class="align-right">Holdout cost sample SD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LLM-guided search</td>
+<td class="align-right">5</td>
+<td class="align-right">0.094071</td>
+<td class="align-right">0.093603</td>
+<td class="align-right">0.000013851</td>
+</tr>
+<tr>
+<td>Uniform random search</td>
+<td class="align-right">5</td>
+<td class="align-right">0.096065</td>
+<td class="align-right">0.095798</td>
+<td class="align-right">0.001769468</td>
+</tr>
+<tr>
+<td>Coordinate search</td>
+<td class="align-right">1 deterministic path</td>
+<td class="align-right">0.096354</td>
+<td class="align-right">0.096173</td>
+<td class="align-right">0 across identical repeats</td>
+</tr>
+<tr>
+<td>Fixed reference</td>
+<td class="align-right">1 reference controller</td>
+<td class="align-right">0.174462</td>
+<td class="align-right">0.175303</td>
+<td class="align-right">Not estimated</td>
+</tr>
+</tbody>
+</table>
+<p>The two primary comparisons use the preregistered bootstrap analysis. It resamples the five search-repetition indices and the 30 holdout noise-seed blocks, retaining the paired evaluation cases. Each block includes all three regimes. There are 10,000 bootstrap replicates. The two primary intervals use a Bonferroni adjustment: each is a two-sided 97.5% interval for an intended combined error rate of 5%.</p>
+<table>
+<thead>
+<tr>
+<th>Primary comparison</th>
+<th class="align-right">Mean cost difference, model minus baseline</th>
+<th>Registered 97.5% interval</th>
+<th class="align-right">Relative cost reduction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model versus random search</td>
+<td class="align-right">−0.002195</td>
+<td>[−0.003788, −0.000736]</td>
+<td class="align-right">2.29%</td>
+</tr>
+<tr>
+<td>Model versus coordinate search</td>
+<td class="align-right">−0.002570</td>
+<td>[−0.002802, −0.002334]</td>
+<td class="align-right">2.67%</td>
+</tr>
+</tbody>
+</table>
+<p>Both intervals lie below zero, meeting the registered criteria for lower mean holdout cost. For coordinate search, resampling its repeated entries adds no search variability because those entries are identical. The interval reflects variation in the model searches and evaluation cases, not five independent coordinate-search paths.</p>
+<p>These intervals quantify uncertainty under this registered resampling design. With only five model searches and five random searches, they cannot provide a precise picture of rare failures or the full distribution of future search outcomes. They also do not cover variation across tasks, prompts, model versions, or different optimization baselines.</p>
+<h2>A narrow spread, with a small sample</h2>
+<p><img src="/assets/multi-proposer-v1/search-spread.png" alt="Development and holdout cost spread across five model searches and five random searches, alongside deterministic coordinate search."></p>
+<p><em>The ratios in this figure compare sample standard deviations, not variances or probabilities of success. They describe these five observed searches.</em></p>
+<p>The model's holdout sample standard deviation was about one hundred and twenty-eighth of random search's. On development cases, it was about one four-hundred-and-seventh. This meets the registered stability criterion that the model's observed search spread should be no larger than random search's.</p>
+<p>The distinction between standard deviation and variance matters. So does the small sample: this is not evidence that the method is “128 times more reliable.” Coordinate search has zero spread across its identical repeats, so the model cannot claim lower variability than that baseline.</p>
+<p>Even the highest-cost model winner, at <code>0.093613</code>, scored below the lowest-cost random-search winner, at <code>0.094106</code>, in this sample. That is a useful descriptive result, rather than a separate guarantee about future searches.</p>
+<p>There is also a small reversal worth noticing. The derivative gains near <code>0.01113</code> scored slightly better during development, while those near <code>0.02348</code> scored slightly better on holdout. The model's advantage over the baselines persisted, but the fine ordering of its own candidates did not. Extra decimal places in a development score should not be mistaken for certainty about which setting will work best on fresh cases.</p>
+<h2>Where the difference appears</h2>
+<p><img src="/assets/multi-proposer-v1/regimes.png" alt="Mean holdout cost in the nominal, disturbance-shift, and saturation-limited regimes."></p>
+<p><em>Model and random-search bars average their five selected controllers. Coordinate search contributes one deterministic outcome.</em></p>
+<p>The model-selected controllers had lower mean holdout cost than both search baselines in each regime. The largest absolute gap was in the disturbance regime: <code>0.049641</code> for the model, <code>0.054053</code> for random search, and <code>0.054045</code> for coordinate search. The saturation-limited regime remained the largest contributor to total cost for every method.</p>
+<p>These comparisons locate the observed improvement. They do not show that a particular gain, anti-windup setting, or use of feedback caused it. Establishing a mechanism would require a controlled comparison designed for that question.</p>
+<h2>Safety, accounting, and reproducibility</h2>
+<p>No unsafe states, unsafe terminal states, or numerical failures were recorded across the model's 3,000 development trials. The saved holdout evaluation likewise recorded none. These are observations within the specified simulator and threshold, not a general safety guarantee.</p>
+<p>The holdout evaluation covered 11 distinct controllers: four model winners, five random-search winners, one coordinate-search winner, and the reference. At 90 trials each, that is 990 physical evaluation trials. Reused results for duplicate controllers produce 1,440 logical entries across the method-repetition table; those extra entries are not additional independent evidence.</p>
+<p>A separate saved trajectory bundle contains 30 illustrative trials: 15 development and 15 holdout trials. Including these examples, the historical run used 201,000 holdout noise draws. This note reviews those saved records without running new holdout trials.</p>
+<p>The five model searches have saved-response replays. Those checks reproduce the recorded candidate evaluations and selected winners from fixed responses. They do not reproduce model generation or independently verify model identity, session isolation, or billing. The historical execution records report zero marginal spend under the session quota; that is not a general cost estimate for reproducing the live searches.</p>
+<h2>What this replication adds</h2>
+<p>The first study showed one promising controller. This follow-up shows that five fresh searches under the registered procedure found closely grouped controllers that beat the registered baselines on new noise cases. It supplies an initial estimate of search-to-search variation and meets the two primary holdout comparison criteria.</p>
+<p>The result is still bounded by the task and comparison. Five conversations are a small sample. The plant family stayed fixed. The baselines are specific implementations at a specific budget. This study does not isolate the contribution of outcome feedback from the model's prior knowledge, and it does not test whether the same advantage transfers to other control problems.</p>
+<p>The distinction in the <a href="/writing/recursive-self-improvement-what-does-it-actually-mean/">essay on recursive self-improvement</a> remains useful: improving a controller and improving the procedure that searches for controllers are different claims. Here, the procedure stayed fixed. What repeated was its success at finding a better artifact within this bounded experiment.</p>
+<p>The holdout cases are now inspected and locked. Any new confirmatory study must use a newly registered evaluation split; a claim about improving the research procedure would also need an experiment designed to measure that change.</p>
+<h2>Inspect the evidence</h2>
+<p>The <a href="/assets/multi-proposer-v1/readme.txt">evidence guide</a> explains the downloadable files and their limits. The <a href="/assets/multi-proposer-v1/registered-protocol.txt">registered protocol</a> and <a href="/assets/multi-proposer-v1/frozen-benchmark.json">frozen benchmark</a> preserve the original registration, including historical planned-status labels. The interpretation in this note reflects the completed study.</p>
+<p>The <a href="/assets/multi-proposer-v1/evidence.json">numeric evidence</a> provides full-precision selected-controller results and both primary comparisons. The <a href="/assets/multi-proposer-v1/holdout-rollouts.csv">per-seed holdout measurements</a>, <a href="/assets/multi-proposer-v1/budget.csv">development search curves</a>, and <a href="/assets/multi-proposer-v1/costs.csv">selected-controller costs</a> support the tables and figures. Repeated controller entries reuse measurements and must not be counted as independent trials. Raw model conversations, checkpoints, and research source code are not included in this website release.</p>
+<aside class="disclosure"><h2>Disclosure</h2><p>Published research note. Independent synthetic study with no employer code or data. Results are drawn from saved records of five live proposer searches and their completed holdout evaluation; this editorial review ran no new holdout trials. The recorded model label and session isolation are execution provenance, not independently authenticated provider claims.</p></aside></article></main>
+<footer><span>Mu Qiao · PhD</span><span>Research. Build. Reflect.</span><a href="#top">Back to top ↑</a></footer>
+</div></body></html>
