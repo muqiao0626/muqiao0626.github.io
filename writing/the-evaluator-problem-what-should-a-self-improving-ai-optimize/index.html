@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Evaluator Problem: What Should a Self-Improving AI Optimize? — Mu Qiao</title>
+<meta name="description" content="A research system needs to improve its measurements without mistaking a changed measurement for progress."><meta name="theme-color" content="#f7f5ef">
+<meta property="og:title" content="The Evaluator Problem: What Should a Self-Improving AI Optimize? — Mu Qiao"><meta property="og:description" content="A research system needs to improve its measurements without mistaking a changed measurement for progress.">
+<meta property="og:site_name" content="Mu Qiao">
+<meta name="twitter:card" content="summary"><meta name="twitter:title" content="The Evaluator Problem: What Should a Self-Improving AI Optimize? — Mu Qiao"><meta name="twitter:description" content="A research system needs to improve its measurements without mistaking a changed measurement for progress.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://muqiao0626.github.io/writing/the-evaluator-problem-what-should-a-self-improving-ai-optimize/"><meta property="og:url" content="https://muqiao0626.github.io/writing/the-evaluator-problem-what-should-a-self-improving-ai-optimize/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+</head><body id="top"><a class="skip-link" href="#main">Skip to content</a><div class="page">
+<header><a class="wordmark" href="/" aria-label="Mu Qiao, home">mq<span>.</span></a><nav aria-label="Main navigation"><a href="/">Home</a><a href="/research/">Research</a><a href="/writing/" aria-current="page">Writing</a><a href="/projects/">Projects</a><a href="/about/">About</a></nav></header>
+<main id="main" tabindex="-1"><p class="article-series"><a class="text-link" href="/writing/self-improving-ai-lab/">The Self-Improving AI Lab</a></p><section class="page-intro"><p class="eyebrow">essay</p><h1>The Evaluator Problem: What Should a Self-Improving AI Optimize?</h1><p class="lead">A research system needs to improve its measurements without mistaking a changed measurement for progress.</p></section><article class="prose"><p class="byline">2026-10-31</p><p><em>If an AI system can improve itself, what would make its next improvement worth keeping?</em></p>
+<h2>The score went up. What changed?</h2>
+<p>Imagine the controller-search agent from the previous two essays returning with good news. It has found a controller that tracks its target more accurately. The score is higher, the plot looks smoother, and the agent recommends keeping the change.</p>
+<p>I would want to look at the controls. Perhaps the new controller uses much larger actions. Perhaps it performs beautifully on the disturbances it has already seen, but poorly when the timing changes. Perhaps nothing about its underlying performance improved, and this evaluation happened to be lucky.</p>
+<p>These possibilities call for different investigations. They also reveal how much was hidden inside the word “better.”</p>
+<p>In the <a href="/writing/can-ai-become-its-own-research-scientist/">first essay</a>, I asked whether an AI could use experiments to improve its research decisions. In the <a href="/writing/recursive-self-improvement-what-does-it-actually-mean/">second</a>, I asked what evidence would show that a successor becomes better at producing further improvements. Both questions rely on an evaluator whose judgments deserve to guide the next step.</p>
+<p>This third essay asks what happens when that reliance becomes the subject of research.</p>
+<p><strong>My thesis is that a credible self-improvement loop needs two distinct processes: one that searches for improvements, and one that tests whether its definition of improvement still holds up. The evaluator can change, but a change in the evaluator must not count as evidence that the system improved.</strong></p>
+<p>I do not think this requires a perfect measure of intelligence or scientific value. It requires us to say what a measurement supports, how optimization might undermine it, and what evidence could force us to revise it.</p>
+<h2>An objective is a commitment</h2>
+<p>Let <code>S</code> be a candidate system, <code>D</code> a declared distribution of situations, and <code>u(S, x)</code> the value we assign to its behavior in situation <code>x</code>. For a specified purpose, write:</p>
+<pre><code class="language-text">V_D(S) = E[u(S, x)],    x drawn from D
+</code></pre>
+<p>This is a target for the comparison, not an assumption that we can observe value perfectly. Even choosing <code>u</code> involves judgment. Which errors matter? Whose costs count? Over what time horizon?</p>
+<p>What the research loop actually receives is an evaluator's estimate, <code>V̂_E(S)</code>. I will use higher values for better outcomes throughout. For a controller, that can mean the negative of a cost, preserving the lower-is-better convention used in the underlying study.</p>
+<p>A simple selection rule keeps a candidate whenever:</p>
+<pre><code class="language-text">V̂_E(S′) &gt; V̂_E(S)
+</code></pre>
+<p>But a measured difference alone does not establish a meaningful difference in <code>V_D</code>. Before trusting the rule, we need to examine both the purpose and the measurement.</p>
+<p>Consider an illustrative controller cost:</p>
+<pre><code class="language-text">L(c) = E[ Σ_t (e_t² + λ a_t²) ]
+</code></pre>
+<p>Here <code>c</code> is the controller, <code>e_t</code> its tracking error, <code>a_t</code> its action, and <code>λ ≥ 0</code> the price assigned to action magnitude. This is a teaching example, not a replacement for the project's registered objective.</p>
+<p>If we omit the action penalty, a controller that achieves lower tracking error through excessive action may win legitimately under the written objective. More precise measurement will not repair that omission. We have to decide whether action cost belongs in the purpose of the task.</p>
+<p>Some requirements may be better expressed as constraints. A controller could minimize expected cost subject to a declared bound on the probability of a limit violation. That still leaves a difficult estimation problem, especially for rare events, but it makes the commitment visible. A large average gain cannot silently compensate for a constraint we intended to treat as binding.</p>
+<p>A vector of tracking error, action cost, reliability, and runtime helps reveal tradeoffs. It does not choose among them. We still need a decision rule, including which tradeoffs are acceptable and who may revise them. Writing down more metrics postpones that choice unless we specify how they affect adoption.</p>
+<h2>Three ways a higher score can mislead</h2>
+<p>I find it useful to separate objective mismatch, selection noise, and systematic evaluator error.</p>
+<p><strong>Objective mismatch</strong> is the controller with an omitted action cost. The measurement may be accurate, but it answers an incomplete question.</p>
+<p><strong>Selection noise</strong> appears even when the question is sensible. Suppose <code>K</code> candidates have identical target value <code>v</code>, and their measured scores are:</p>
+<pre><code class="language-text">V̂_i = v + ε_i,    ε_i independently drawn from N(0, σ²)
+i* = argmax_i V̂_i
+</code></pre>
+<p>For <code>K &gt; 1</code>, the selected candidate's expected measured score exceeds <code>v</code>, although its target value is still <code>v</code>. For large <code>K</code>, the leading-order size of the maximum noise term is approximately <code>σ √(2 log K)</code>. This idealized calculation assumes independent Gaussian errors. Real search errors may be correlated, and real candidates may differ in value. Its purpose is to show why searching harder can produce more impressive measurements without producing better systems.</p>
+<p>Cawley and Talbot study this problem in model selection: optimizing a finite-sample selection criterion can overfit that criterion and bias the reported evaluation. Their analysis helps explain why an apparently careful search still needs an assessment outside the selection process. <a href="https://www.jmlr.org/papers/v11/cawley10a.html">Cawley and Talbot (2010)</a>.</p>
+<p><strong>Systematic evaluator error</strong> creates a different opportunity. A simulator might omit a delay, or a learned judge might reward persuasive language more reliably than correct reasoning. Repeating the same measurement can reduce random noise while preserving the blind spot.</p>
+<p>Gao, Schulman, and Hilton study reward-model overoptimization in a synthetic setup. A fixed “gold-standard” model supplies labels for a proxy reward model, and optimization targets that proxy. Their experiments examine how gold-model scores change under reinforcement learning and best-of-<code>n</code> sampling, including deterioration under excessive proxy optimization. The gold model is itself a model, so the study does not provide a direct measurement of human welfare or scientific truth. It does provide a concrete example of an optimizer outgrowing the reliability of its proxy. <a href="https://proceedings.mlr.press/v202/gao23h.html">Gao et al. (2023)</a>.</p>
+<p>This is the concern often gathered under Goodhart's law. I would avoid treating it as a theorem that every stronger optimizer must fail. The practical question is whether the evaluator remains informative in the regions the search now reaches. An evaluator tested on ordinary candidates may be least reliable on the unusual candidates that win an aggressive search.</p>
+<h2>A hidden test is a limited resource</h2>
+<p>The obvious response is to withhold some evaluation tasks. That is useful, but “hidden” needs an operational meaning.</p>
+<p>If a final test returns a score after every revision and that score influences the next revision, it is providing development feedback. The agent need not see the underlying examples to adapt to the test. A human repeatedly choosing designs from those scores can create the same dependence.</p>
+<p>Dwork and colleagues formalize statistical inference under adaptively chosen analyses and develop mechanisms that constrain how information is released. Their results show that adaptive reuse can be managed under specific conditions. They do not imply that an ordinary holdout remains valid under unlimited repeated consultation. <a href="https://arxiv.org/abs/1411.2664">Dwork et al.</a>.</p>
+<p>For a small research project, I would begin with a simpler arrangement: development feedback for search, a declared selection procedure, and a fresh final assessment for the frozen comparison. Once that assessment informs a redesign, I would record the exposure and obtain new confirmatory evidence.</p>
+<p>Freshness also depends on the claim. New seeds can test performance on new realizations of the same simulator. They do not establish transfer to new dynamics, new tasks, or a physical system. A perfectly untouched test can still be unrepresentative of the setting we care about.</p>
+<p>This gives evaluation two separate responsibilities: protect the comparison from adaptation, and justify why the comparison bears on the intended use. Neither substitutes for the other.</p>
+<h2>What if the evaluator improves too?</h2>
+<p>An agent might discover a missing disturbance in its simulator or a test that exposes an important failure. I would want it to make that discovery. Freezing a flawed evaluator forever would preserve comparability at the cost of learning.</p>
+<p>The difficulty is knowing which part of the resulting progress belongs to the system and which belongs to the measurement.</p>
+<p>Suppose <code>S</code> becomes <code>S′</code>, while evaluator <code>E</code> becomes <code>E′</code>. Comparing <code>E′(S′)</code> with <code>E(S)</code> changes both sides of the experiment. Even a harmless change of score units could create an apparent gain.</p>
+<p>A first diagnostic is a crossed comparison:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Original system <code>S</code></th>
+<th>Revised system <code>S′</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Original evaluator <code>E</code></td>
+<td><code>E(S)</code></td>
+<td><code>E(S′)</code></td>
+</tr>
+<tr>
+<td>Revised evaluator <code>E′</code></td>
+<td><code>E′(S)</code></td>
+<td><code>E′(S′)</code></td>
+</tr>
+</tbody>
+</table>
+<p>The within-row differences ask whether the system improved under each evaluator. Disagreement is informative. It might expose an omitted cost, a simulator artifact, or a real change in our priorities. It does not tell us automatically which evaluator is right.</p>
+<p>To investigate that, I would ask both evaluators to make predictions about evidence they did not supply. In the controller example, do their rankings predict which candidates perform better under an independently specified disturbance suite? Do they correctly reject controllers that violate a declared limit? Does an expensive, more faithful test reverse the ranking?</p>
+<p>This external assessment is an anchor for a particular claim, not an infallible judge. Its task distribution, uncertainty, and exposure history must be documented too. If it later guides evaluator design, it becomes development material at that level.</p>
+<p>There is no need to invent an infinite tower of judges before doing useful work. We can make a finite claim supported by a finite chain of evidence. But the chain must end somewhere other than the system's own declaration that it has become better.</p>
+<p>I would therefore let an agent propose evaluator revisions, while separating proposal from adoption. A revision should have a reason, a version, and a comparison against independent evidence. If the purpose itself changes, I would describe a new objective rather than present the new score as continuation of the old progress curve.</p>
+<h2>A useful failure can beat an easy success</h2>
+<p>An evaluator for research faces another difficulty: the experiment that produces the best immediate result may not be the experiment that most improves the next decision.</p>
+<p>Suppose a controller oscillates. One explanation is delayed feedback. Another is repeated saturation at an action limit. An experiment that distinguishes them could fail to produce a better controller and still save many uninformative trials.</p>
+<p>Bayesian experimental design offers one language for this distinction. Let <code>H</code> denote the uncertain hypothesis, <code>d</code> the evidence collected so far, <code>a</code> a proposed experiment, and <code>Y</code> its possible observation. Expected information gain is:</p>
+<pre><code class="language-text">IG(a | d) = E_Y[ KL(p(H | d, Y, a) || p(H | d)) ]
+</code></pre>
+<p>The expectation uses the model's predictive distribution for <code>Y</code>. The KL divergence measures how much the posterior distribution over <code>H</code> differs from the prior distribution given <code>d</code>. An experiment can be valuable because its possible outcomes would distinguish explanations, even when none promises an immediate performance gain. Rainforth and colleagues describe this framework and its computational challenges. <a href="https://arxiv.org/html/2302.14545v2">Rainforth et al., author manuscript</a>.</p>
+<p>I would not replace a crude success count with unrestricted information gain and consider the evaluator problem solved. Information is about a specified uncertainty. A system can learn a great deal about something irrelevant. A model that excludes the real cause can become more certain about the wrong explanation.</p>
+<p>For a decision-focused problem, a more direct quantity is the expected value of sample information:</p>
+<pre><code class="language-text">EVSI(a | d) = E_Y[ max_b E[U(b, H) | d, Y, a] ]
+              − max_b E[U(b, H) | d]
+</code></pre>
+<p>Here <code>b</code> is a subsequent decision and <code>U</code> its utility. Subtracting the experiment's cost, expressed in comparable units, asks whether learning is worth paying for. This is a one-experiment decision model, not a guarantee of an optimal long research program. It makes the dependence on our purpose explicit.</p>
+<p>For open-ended science, the decision set and utility may themselves be incomplete. That is a reason to preserve expert judgment and exploratory work, rather than pretend that scientific value has already been captured by the equation.</p>
+<h2>Confidence should be exposed to outcomes</h2>
+<p>A research agent should record its prediction before it sees the result. Otherwise, it is too easy for a convincing explanation to substitute for an accurate expectation.</p>
+<p>For a resolvable binary event, let <code>p</code> be the predicted probability and <code>y</code> the observed outcome. A simple scoring rule is the Brier loss:</p>
+<pre><code class="language-text">ℓ(p, y) = (p − y)²
+</code></pre>
+<p>A failed event predicted with probability <code>0.95</code> incurs loss <code>0.9025</code>. The same outcome predicted with probability <code>0.55</code> incurs <code>0.3025</code>. These are arithmetic examples, not measurements of an agent.</p>
+<p>If the event's true probability is <code>q</code>, then:</p>
+<pre><code class="language-text">E[ℓ(p, Y)] = (p − q)² + q(1 − q)
+</code></pre>
+<p>The expected loss is minimized at <code>p = q</code>. This illustrates strict propriety: under the stated scoring setup, reporting the actual probability is optimal in expectation. Gneiting and Raftery develop the broader theory of proper scoring rules. <a href="https://doi.org/10.1198/016214506000001437">Gneiting and Raftery (2007)</a>.</p>
+<p>One observation cannot establish calibration. We need many forecasts and outcomes, with attention to sampling uncertainty and which events were selected. Brier loss also measures more than calibration alone. An agent that always predicts a base rate may be calibrated while offering little help in distinguishing promising experiments.</p>
+<p>I would therefore examine predictive accuracy, calibration, and usefulness for decisions together. I would also define in advance what resolves each forecast. “This idea will be important” is not yet a scorable event. “This controller will reduce the declared cost on the reserved test distribution” is closer, provided the test and the treatment of uncertainty are fixed.</p>
+<h2>Test the evaluator where the optimizer pushes it</h2>
+<p>The evaluation study I would most like to see is deliberately modest. It would ask whether a revised evaluator selects better controllers as search pressure increases.</p>
+<p>This is a proposed study, separate from the existing controller experiments. It would require a new protocol and untouched assessment tasks before execution.</p>
+<p>I would compare the original evaluator with a revised evaluator that addresses one specified weakness, such as omitted delayed-feedback scenarios. The hypothesis would be that the revision improves the independently assessed quality of selected candidates at matched total resource budgets, especially at higher search budgets.</p>
+<p>First, I would score the same candidate pool with both evaluators. That isolates differences in ranking from differences in how the candidates were generated. I would include poor and unusual candidates, because accuracy on familiar, competent controllers may tell us little about exploitable mistakes.</p>
+<p>Then I would run separate searches guided by each evaluator. An optimizer changes the population of candidates it encounters, so agreement on a fixed pool is insufficient. Both arms would use the same candidate family and declared search resources. If the revised evaluator costs more, I would report that cost and include a comparison under an equal overall budget, rather than count each evaluation as equally expensive by assumption.</p>
+<p>After selection, a separate assessment would measure the winners' performance, constraint violations, and uncertainty. Repeated independent searches would reveal whether a result depends on one fortunate trajectory. Failed runs would remain in the record under a predeclared rule.</p>
+<p>Evidence against the hypothesis would include no reliable improvement at the matched budget, worse constraint behavior, or a benefit that disappears when evaluator cost is counted. If the revision merely raises its own scores while independent outcomes remain unchanged, that would be precisely the failure the study was designed to detect.</p>
+<p>I would reserve the final assessment for the frozen comparison. Inspecting it at every budget and using the results to redesign the evaluator would turn the proposed test into another optimization loop.</p>
+<h2>Two loops, with a boundary between them</h2>
+<p>The draft of this argument began with an appealing thought: the ultimate evaluator is the world. I still find something useful in that thought, but the world does not return a single score. Outcomes arrive through instruments, sampling decisions, delays, and interpretations. They can test our predictions without choosing our priorities for us.</p>
+<p>A simulator can provide strong evidence about a clearly bounded synthetic claim. A laboratory experiment can challenge a simulator while remaining noisy or incomplete. Multiple critics can uncover different errors, but agreement among critics that share the same blind spot adds little independence. What matters is the particular claim each source of evidence can challenge.</p>
+<p>The control-theory connection is useful in the same bounded way. The evaluator acts like a measurement system, while the search-and-adoption procedure decides what change to apply. Better measurements alone do not guarantee stable or useful updates. The update rule, delays, and dynamics also matter. A feedback diagram is a way to organize those questions, not a stability proof for recursive self-improvement.</p>
+<p>Across these three essays, my question has become more specific. Can an AI conduct research? Can the resulting system become better at conducting further research? And can we preserve the meaning of “better” while both the researcher and its measurements change?</p>
+<p>I would want an autonomous researcher to help expose weaknesses in its evaluator. That could be an important research achievement. I would also want its proposed repair to face evidence it cannot redefine simply by producing a more persuasive judgment.</p>
+<p>The two loops can learn from each other: improve the system, then investigate whether the measurement still supports the claim. Their separation is what makes their interaction informative.</p>
+<p>The question I want to keep asking is this: <strong>when a system reports progress, what observation would persuade us that the progress was in the evaluator's score rather than in the capability we intended to improve?</strong> If we can specify that observation before the search begins, we have a much better starting point for trusting what comes next.</p>
+<aside class="disclosure"><h2>Disclosure</h2><p>Conceptual essay. Primary sources checked on 2026-10-31. Mathematical illustrations and the proposed evaluator comparison are explanatory or prospective, not new experimental results. No existing experiment protocol or reported measurement is changed.</p></aside><h2>Sources</h2><ul><li><a href="https://www.jmlr.org/papers/v11/cawley10a.html">Cawley and Talbot — On Over-fitting in Model Selection and Subsequent Selection Bias in Performance Evaluation (JMLR, 2010)</a></li><li><a href="https://proceedings.mlr.press/v202/gao23h.html">Gao, Schulman and Hilton — Scaling Laws for Reward Model Overoptimization (ICML, 2023)</a></li><li><a href="https://arxiv.org/abs/1411.2664">Dwork et al. — Preserving Statistical Validity in Adaptive Data Analysis (arXiv, revised 2016)</a></li><li><a href="https://doi.org/10.1198/016214506000001437">Gneiting and Raftery — Strictly Proper Scoring Rules, Prediction, and Estimation (JASA, 2007)</a></li><li><a href="https://arxiv.org/html/2302.14545v2">Rainforth et al. — Modern Bayesian Experimental Design (author manuscript, v2, 2023)</a></li></ul></article></main>
+<footer><span>Mu Qiao · PhD</span><span>Research. Build. Reflect.</span><a href="#top">Back to top ↑</a></footer>
+</div></body></html>
