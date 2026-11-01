@@ -49,3 +49,9 @@ nav a{padding:8px 0;min-height:44px;display:inline-flex;align-items:center}nav a
 .prose table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;font-size:14px;line-height:1.5;margin:24px 0}.prose th,.prose td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);min-width:100px}.prose th{font-weight:600}.prose img{display:block;margin:28px auto}
 
 .prose .align-right{text-align:right}.prose .align-center{text-align:center}
+
+/* Native MathML stays readable; wide equations scroll independently on mobile. */
+.prose .math-display{max-width:100%;overflow-x:auto;margin:24px 0;padding:12px 2px;overscroll-behavior-x:contain}
+.prose .math-display>.katex{display:block;width:max-content;min-width:100%}
+.prose .math-display:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.prose math{font-size:1em}
