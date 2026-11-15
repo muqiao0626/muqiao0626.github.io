@@ -40,6 +40,11 @@
     "url": "https://muqiao0626.github.io/writing/ai-that-actually-works/"
   },
   {
+    "title": "The Hidden Connection Between Reinforcement Learning and Control Theory",
+    "summary": "A policy is a controller. Following that connection reveals how learning, planning, and stability fit into the same decision problem.",
+    "url": "https://muqiao0626.github.io/writing/the-hidden-connection-between-reinforcement-learning-and-control-theory/"
+  },
+  {
     "title": "The Evaluator Problem: What Should a Self-Improving AI Optimize?",
     "summary": "A research system needs to improve its measurements without mistaking a changed measurement for progress.",
     "url": "https://muqiao0626.github.io/writing/the-evaluator-problem-what-should-a-self-improving-ai-optimize/"
