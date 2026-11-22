@@ -40,6 +40,11 @@
     "url": "https://muqiao0626.github.io/writing/ai-that-actually-works/"
   },
   {
+    "title": "Why Agentic AI Is Really a Feedback-Control Problem",
+    "summary": "Reliable agents need more than tools: observations that change decisions, memory that preserves evidence, and actions that make uncertainty worth resolving.",
+    "url": "https://muqiao0626.github.io/writing/why-agentic-ai-is-really-a-feedback-control-problem/"
+  },
+  {
     "title": "The Hidden Connection Between Reinforcement Learning and Control Theory",
     "summary": "A policy is a controller. Following that connection reveals how learning, planning, and stability fit into the same decision problem.",
     "url": "https://muqiao0626.github.io/writing/the-hidden-connection-between-reinforcement-learning-and-control-theory/"
